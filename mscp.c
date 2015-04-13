@@ -1206,7 +1206,8 @@ static int cmp_bk(const void *ap, const void *bp)
 
 static void compact_book(void)
 {
-        long b = 0, c = 0;
+  
+  long b = 0, c = 0;
 
         qsort(BOOK, booksize, sizeof(BOOK[0]), cmp_bk);
         while (b<booksize) {
@@ -1258,11 +1259,12 @@ static void load_book(char *filename)
 
 static int book_move(void)
 {
+
         int move = 0, sum = 0;
         long x = 0, y, m;
         char *seperator = "book:";
         unsigned long hash;
-
+  printf("Book move.\n");
         if (!booksize) return 0;
         y = booksize;
         hash = compute_hash();
@@ -2011,7 +2013,8 @@ int main(void)
                 mscp_commands[cmd].cmd(line);
 
                 while (computer[!WTM]) {
-                        move = book_move();
+	  /*SIMPLEmove = book_move();*/
+		  move=0;	
                         if (!move) {
                                 booksize = 0;
                                 memset(&core, 0, sizeof(core));
