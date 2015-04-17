@@ -1,6 +1,10 @@
 #!/bin/bash
 
 make
-./mscp < inputBoth.txt
+./mscp $1 < inputBoth.txt > out1.txt
 
-python analyze.py
+echo "Did first run."
+
+./mscp $1 < inputBoth.txt > out2.txt
+
+python analyze.py out1.txt out2.txt
