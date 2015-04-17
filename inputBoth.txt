@@ -2,13 +2,3 @@ both
 new
 both
 new
-both
-new
-both
-new
-both
-new
-both
-new
-both
-quit
