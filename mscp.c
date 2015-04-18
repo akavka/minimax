@@ -81,7 +81,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 5;                /* Maximum search depth */
+static int maxdepth = 3;                /* Maximum search depth */
 
 /* Constants for static move ordering (pre-scores) */
 #define PRESCORE_EQUAL       (10U<<9)
@@ -1963,6 +1963,332 @@ struct command mscp_commands[] = {
  { NULL,        cmd_default,    "enter moves in algebraic notation"     },
 };
 
+
+/*Here begins Adam's parallel functions*/
+
+static int p_root_search(int maxdepth)
+{
+        int             depth;
+        int             score, best_score;
+        int             move = 0;
+        int             alpha, beta;
+        unsigned long   node;
+        struct move     *m;
+	int proceed=1;
+
+        nodes = 0;
+        compute_piece_square_tables();
+
+        generate_moves(0);
+        qsort(move_stack, move_sp-move_stack, sizeof(struct move), cmp_move);
+
+        alpha = -INF;
+        beta = +INF;
+        puts(" nodes ply score move");
+
+
+
+
+
+	
+        for (depth = 1; depth <= maxdepth; depth++) {
+                m = move_stack;
+                best_score = INT_MIN;
+
+                node = nodes;
+
+
+		/*in parallel version the first iteration works different than subsequent iterations.*/
+	while (m < move_sp && proceed) {
+
+		  /*go into move, check if legal;*/
+                        make_move(m->move);
+                        compute_attacks();
+                        if (friend->attack[enemy->king] != 0) { /* illegal? */
+                                unmake_move();
+                                *m = *--move_sp; /* drop this move */
+                                continue;
+                        }
+
+
+			/*			 SIMPLE No hash stack
+			//don't know what this is anyway*/
+			   hash_stack[ply] = compute_hash();
+			
+
+			/*do normal search. Or if end of depth, Q-Search*/
+                        if (depth-1 > 0) {
+                                score = -search(depth-1, -beta, -alpha);
+                        } else {
+                                score = -qsearch(-beta, -alpha);
+                        }
+                        unmake_move();
+
+
+			/*Fix window if it was too narrow.*/
+                        if (score>=beta || (score<=alpha && m==move_stack)) {
+                                alpha = -INF;
+                                beta = +INF;
+                                continue; /* re-search this move */
+                        }
+			
+			/*I don't know what this is*/
+                        m->prescore = ~squeeze(nodes-node);
+                        node = nodes;
+
+
+                        if (score > best_score) {
+                                struct move tmp;
+
+                                best_score = score;
+                                alpha = score;
+                                beta = score + 1;
+                                move = m->move;
+
+                                tmp = *move_stack; /* swap with top of list */
+                                *move_stack = *m;
+                                *m = tmp;
+                        }
+			m++; /* continue with next move */
+			proceed=0;
+                }
+		
+
+		for (;m < move_sp;) {
+
+		  /*go into move, check if legal;*/
+                        make_move(m->move);
+                        compute_attacks();
+                        if (friend->attack[enemy->king] != 0) { /* illegal? */
+                                unmake_move();
+                                *m = *--move_sp; /* drop this move */
+                                continue;
+                        }
+
+
+			/*			 SIMPLE No hash stack
+			//don't know what this is anyway*/
+			   hash_stack[ply] = compute_hash();
+			
+
+			/*do normal search. Or if end of depth, Q-Search*/
+                        if (depth-1 > 0) {
+                                score = -search(depth-1, -beta, -alpha);
+                        } else {
+                                score = -qsearch(-beta, -alpha);
+                        }
+                        unmake_move();
+
+
+			/*Fix window if it was too narrow.*/
+                        if (score>=beta || (score<=alpha && m==move_stack)) {
+                                alpha = -INF;
+                                beta = +INF;
+                                continue; /* re-search this move */
+                        }
+			
+			/*I don't know what this is*/
+                        m->prescore = ~squeeze(nodes-node);
+                        node = nodes;
+
+
+                        if (score > best_score) {
+                                struct move tmp;
+
+                                best_score = score;
+                                alpha = score;
+                                beta = score + 1;
+                                move = m->move;
+
+                                tmp = *move_stack; /* swap with top of list */
+                                *move_stack = *m;
+                                *m = tmp;
+                        }
+			m++; /* continue with next move */
+                }
+
+                if (move_sp-move_stack <= 1) {
+                        break; /* just one move to play */
+                }
+
+                printf(" %5lu %3d %+1.2f ", nodes, depth, best_score / 100.0);
+                print_move_san(move);
+                puts("");
+
+                /* sort remaining moves in descending order of subtree size */
+                qsort(move_stack+1, move_sp-move_stack-1, sizeof(*m), cmp_move);
+
+		/*Widen window for deeper search*/
+                alpha = best_score - 33;        /* aspiration window */
+                beta = best_score + 33;
+        }
+        move_sp = move_stack;
+        return move;
+}
+
+
+static int p_search(int depth, int alpha, int beta)
+{
+        int                             best_score = -INF;
+        int                             best_move = 0;
+        int                             score;
+        struct move                     *moves;
+        int                             incheck = 0;
+	int                             proceed=1;
+
+
+        /*SIMPLE we cut these variables when we don't use the hash table
+       
+	struct tt                       *tt;
+        int                             oldalpha = alpha;
+	int                             oldbeta = beta;
+        int                             i, count=0;
+	*/
+        nodes++;
+
+
+
+	/*SIMPLE no hash stack
+	  test for draw by repetition*/ 
+        /*hash_stack[ply] = compute_hash();
+        for (i=ply-4; i>=board[LAST]; i-=2) {
+                if (hash_stack[i] == hash_stack[ply]) count++;
+                if (count>=2) return 0;
+		}*/
+
+        
+	/*  check transposition table*/
+	/*
+        tt = &TTABLE[ ((hash_stack[ply]>>16) & (CORE-1)) ];
+        if (tt->hash == (hash_stack[ply] & 0xffffU)) {
+                if (tt->depth >= depth) {
+                        if (tt->flag >= 0) alpha = MAX(alpha, tt->score);
+                        if (tt->flag <= 0) beta = MIN(beta,  tt->score);
+                        if (alpha >= beta) return tt->score;
+                }
+                best_move = tt->move & 07777;
+        }
+
+        history[best_move] |= PRESCORE_HASHMOVE;*/
+        incheck = enemy->attack[friend->king];
+
+        /*
+         *  generate moves
+         */
+        moves = move_sp;
+        generate_moves(0);
+
+        history[best_move] &= 0x3fff;
+        best_move = 0;
+
+        qsort(moves, move_sp - moves, sizeof(*moves), cmp_move);
+
+
+	/*recursively call this function*/
+        while (proceed && (move_sp > moves)) {
+                int newdepth;
+                int move;
+                move_sp--;
+                move = move_sp->move;
+                make_move(move);
+                compute_attacks();
+                if (friend->attack[enemy->king]) {
+                        unmake_move();
+                        continue;
+                }
+
+                newdepth = incheck ? depth : depth-1;
+                if (newdepth <= 0) {
+                        score = -qsearch(-beta, -alpha);
+                } else {
+                        score = -search(newdepth, -beta, -alpha);
+                }
+                if (score < -29000) score++;    /* adjust for mate-in-n */
+
+                unmake_move();
+
+                if (score <= best_score) continue;
+                best_score = score;
+                best_move = move;
+
+                if (score <= alpha) continue;
+                alpha = score;
+
+                if (score < beta) continue;
+
+                move_sp = moves; /* fail high: skip remaining moves */
+		proceed=0;
+        }
+
+
+
+        /*
+         *  loop over all moves
+         */
+        while (move_sp > moves) {
+                int newdepth;
+                int move;
+                move_sp--;
+                move = move_sp->move;
+                make_move(move);
+                compute_attacks();
+                if (friend->attack[enemy->king]) {
+                        unmake_move();
+                        continue;
+                }
+
+                newdepth = incheck ? depth : depth-1;
+                if (newdepth <= 0) {
+                        score = -qsearch(-beta, -alpha);
+                } else {
+                        score = -search(newdepth, -beta, -alpha);
+                }
+                if (score < -29000) score++;    /* adjust for mate-in-n */
+
+                unmake_move();
+
+                if (score <= best_score) continue;
+                best_score = score;
+                best_move = move;
+
+                if (score <= alpha) continue;
+                alpha = score;
+
+                if (score < beta) continue;
+
+                move_sp = moves; /* fail high: skip remaining moves */
+        }
+
+        if (best_score == -INF) { /* deal with mate and stalemate */
+                if (incheck) {
+                        best_score = -30000;
+                } else {
+                        best_score = 0;
+                }
+        }
+
+
+
+
+	/*	SIMPLE getting rid of hash table
+       history[best_move & 07777] += depth*depth;
+        if (history[best_move & 07777] > 511) {
+                int m;
+                for (m=0; m<SPECIAL; m++) {
+		history[m] >>= 4;  */   /*  scaling */
+	/*}
+        }
+
+        tt->hash = hash_stack[ply] & 0xffffU;
+        tt->move = best_move;
+        tt->score = best_score;
+        tt->depth = depth;
+        tt->flag = (oldalpha < best_score) - (best_score < oldbeta);
+	*/
+        return best_score;
+}
+
+
 /*----------------------------------------------------------------------+
  |      main                                                            |
  +----------------------------------------------------------------------*/
@@ -2062,7 +2388,13 @@ int main(int argc, char *argv[])
                                 booksize = 0;
                                 memset(&core, 0, sizeof(core));
                                 memset(history, 0, sizeof(history));
+
+								if (argc>2 && atoi(argv[2])==1){
+				  move=p_root_search(maxdepth);
+				    }
+				    else{
                                 move = root_search(maxdepth);
+				}
                         }
 
 			end=clock();
