@@ -27,6 +27,7 @@ char mscp_c_rcsid[] = "@(#)$Id: mscp.c,v 1.18 2003/12/14 15:12:12 marcelk Exp $"
 #include <string.h>
 #include <time.h>
 
+
 typedef unsigned char byte;
 #define INF 32000
 #define MAX(a,b) ((a)>(b) ? (a) : (b))
@@ -80,7 +81,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 4;                /* Maximum search depth */
+static int maxdepth = 5;                /* Maximum search depth */
 
 /* Constants for static move ordering (pre-scores) */
 #define PRESCORE_EQUAL       (10U<<9)
@@ -1907,7 +1908,9 @@ static void cmd_new(char *dummy)
         load_book("book.txt");
         computer[0] = 0;
         computer[1] = 1;
-        rnd_seed = time(NULL);
+        
+	/*SIMPLE I changed the random seed elsewhere
+	  rnd_seed = time(NULL);*/
 }
 
 static void cmd_xboard(char *dummy)
@@ -1979,13 +1982,17 @@ static char startup_message[] =
         "\n"
         "Type 'help' for a list of commands\n";
 
-int main(void)
+int main(int argc, char *argv[])
 {
         int i;
         int cmd;
         char line[128];
         char name[128];
         int move;
+	clock_t start, end;
+	FILE*write_time;
+	write_time=fopen("time.dat", "w");
+	
 
         puts(startup_message);
         signal(SIGINT, catch_sigint);
@@ -2021,6 +2028,14 @@ int main(void)
 
         cmd_new(NULL);
 
+	/*SIMPLE I added this so we can input the random seed.*/
+	if(argc>1){
+	rnd_seed=atol(argv[1]);
+	}
+	else{
+	  rnd_seed=time(NULL);
+	}
+
         for (;;) { /* main loop */
                 if (!xboard_mode) {
                         fputs("mscp> ", stdout);
@@ -2041,22 +2056,31 @@ int main(void)
 
                 while (computer[!WTM]) {
 	  /*SIMPLEmove = book_move();*/
-		  move=0;	
+		  move=0;
+		  start=clock();
                         if (!move) {
                                 booksize = 0;
                                 memset(&core, 0, sizeof(core));
                                 memset(history, 0, sizeof(history));
                                 move = root_search(maxdepth);
                         }
+
+			end=clock();
+			fprintf(write_time, "%f\n", ((double)end-start)/CLOCKS_PER_SEC);
+
                         if (!move || ply >= 300) {
                                 printf("game over: ");
+				fprintf(write_time, "game over: ");
                                 compute_attacks();
                                 if (!move && enemy->attack[friend->king] != 0) {
                                         puts(WTM ? "0-1" : "1-0");
+					fputs(WTM ? "0-1\n" : "1-0\n",write_time);
                                 } else {
                                         puts("1/2-1/2");
+					fputs("1/2-1/2\n",write_time);
                                 }
                                 computer[0] = computer[1] = 0;
+				
                                 break;
                         }
                         printf("%d. ... ", 1+ply/2);
@@ -2069,6 +2093,7 @@ int main(void)
                         print_board();
                 }
         }
+	fclose(write_time);
         return 0;
 }
 
