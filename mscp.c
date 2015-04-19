@@ -1,5 +1,4 @@
 
-
 /*----------------------------------------------------------------------+
  |                                                                      |
  |              mscp.c - Marcel's Simple Chess Program                  |
@@ -83,6 +82,7 @@ static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
 static int maxdepth = 3;                /* Maximum search depth */
+static int parallel_code=0;
 
 /* Constants for static move ordering (pre-scores) */
 #define PRESCORE_EQUAL       (10U<<9)
@@ -412,8 +412,12 @@ static void setup_board(char *fen)
 
 static void atk_slide(int sq, byte dirs, struct side *s)
 {
+
         byte dir = 0;
         int to;
+	if (parallel_code){
+	  fprintf(stderr, "Calling serial version during parallel code.\n");
+	}
 
         dirs &= king_dirs[sq];
         do {
@@ -432,6 +436,10 @@ static void compute_attacks(void)
 {
         int sq, to, pc;
         byte dir, dirs;
+ 
+	if (parallel_code){
+	  fprintf(stderr, "Calling serial version during parallel code.\n");
+	}
 
         memset(&white, 0, sizeof white);
         memset(&black, 0, sizeof black);
@@ -1971,7 +1979,666 @@ struct command mscp_commands[] = {
 };
 
 
-/*Here begins Adam's parallel functions*/
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Here begins Adam's parallel functions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+static void p_atk_slide(int sq, byte dirs, struct side *s)
+{
+        byte dir = 0;
+        int to;
+
+        dirs &= king_dirs[sq];
+        do {
+                dir -= dirs;
+                dir &= dirs;
+                to = sq;
+                do {
+                        to += king_step[dir];
+                        s->attack[to] += 1;
+                        if (board[to] != EMPTY) break;
+                } while (dir & king_dirs[to]);
+        } while (dirs -= dir);
+}
+
+
+static void p_compute_attacks(void)
+{
+        int sq, to, pc;
+        byte dir, dirs;
+
+        memset(&white, 0, sizeof white);
+        memset(&black, 0, sizeof black);
+
+        friend = WTM ? &white : &black;
+        enemy = WTM ? &black : &white;
+
+        for (sq=0; sq<64; sq++) {
+                pc = board[sq];
+                if (pc == EMPTY) continue;
+
+                switch (pc) {
+                case WHITE_KING:
+                        dir = 0;
+                        white.king = sq;
+                        dirs = king_dirs[sq];
+                        do {
+                                dir -= dirs;
+                                dir &= dirs;
+                                to = sq + king_step[dir];
+                                white.attack[to] += 1;
+                        } while (dirs -= dir);
+                        break;
+
+                case BLACK_KING:
+                        dir = 0;
+                        black.king = sq;
+                        dirs = king_dirs[sq];
+                        do {
+                                dir -= dirs;
+                                dir &= dirs;
+                                to = sq + king_step[dir];
+                                black.attack[to] += 1;
+                        } while (dirs -= dir);
+                        break;
+
+                case WHITE_QUEEN:
+                        atk_slide(sq, ATK_SLIDER, &white);
+                        break;
+
+                case BLACK_QUEEN:
+                        atk_slide(sq, ATK_SLIDER, &black);
+                        break;
+
+                case WHITE_ROOK:
+                        atk_slide(sq, ATK_ORTHOGONAL, &white);
+                        break;
+
+                case BLACK_ROOK:
+                        atk_slide(sq, ATK_ORTHOGONAL, &black);
+                        break;
+
+                case WHITE_BISHOP:
+                        atk_slide(sq, ATK_DIAGONAL, &white);
+                        break;
+
+                case BLACK_BISHOP:
+                        atk_slide(sq, ATK_DIAGONAL, &black);
+                        break;
+
+                case WHITE_KNIGHT:
+                        dir = 0;
+                        dirs = knight_dirs[sq];
+                        do {
+                                dir -= dirs;
+                                dir &= dirs;
+                                to = sq + knight_jump[dir];
+                                white.attack[to] += 1;
+                        } while (dirs -= dir);
+                        break;
+
+                case BLACK_KNIGHT:
+                        dir = 0;
+                        dirs = knight_dirs[sq];
+                        do {
+                                dir -= dirs;
+                                dir &= dirs;
+                                to = sq + knight_jump[dir];
+                                black.attack[to] += 1;
+                        } while (dirs -= dir);
+                        break;
+
+                case WHITE_PAWN:
+                        white.pawns[1+F(sq)] += 1;
+                        if (F(sq) != FILE_H) {
+                                white.attack[sq + DIR_N + DIR_E] += 1;
+                        }
+                        if (F(sq) != FILE_A) {
+                                white.attack[sq + DIR_N - DIR_E] += 1;
+                        }
+                        break;
+
+                case BLACK_PAWN:
+                        black.pawns[1+F(sq)] += 1;
+                        if (F(sq) != FILE_H) {
+                                black.attack[sq - DIR_N + DIR_E] += 1;
+                        }
+                        if (F(sq) != FILE_A) {
+                                black.attack[sq - DIR_N - DIR_E] += 1;
+                        }
+                        break;
+                }
+        }
+}
+
+static void p_unmake_move(void)
+{
+        int sq;
+
+        for (;;) {
+                sq = *--undo_sp;
+                if (sq < 0) break;               /* Found sentinel */
+                board[sq] = *--undo_sp;
+        }
+        ply--;
+}
+
+
+static void p_make_move(int move)
+{
+        int fr;
+        int to;
+        int sq;
+
+        *undo_sp++ = -1;                        /* Place sentinel */
+
+        if (board[EP]) {                        /* Clear en-passant info */
+                *undo_sp++ = board[EP];
+                *undo_sp++ = EP;
+                board[EP] = 0;
+        }
+
+        to = TO(move);
+        fr = FR(move);
+
+        if (move & SPECIAL) {                   /* Special moves first */
+                switch (R(fr)) {
+                case RANK_8:                    /* Black castles */
+                        unmake_move();
+                        if (to == G8) {
+                                make_move(MOVE(H8,F8));
+                        } else {
+                                make_move(MOVE(A8,D8));
+                        }
+                        break;
+
+                case RANK_7:
+                        if (board[fr] == BLACK_PAWN) { /* Set en-passant flag */
+                                *undo_sp++ = 0;
+                                *undo_sp++ = EP;
+                                board[EP] = to;
+                        } else {                /* White promotes */
+                                *undo_sp++ = board[fr];
+                                *undo_sp++ = fr;
+                                board[fr] = WHITE_QUEEN + (move>>13);
+                        }
+                        break;
+
+                case RANK_5:                    /* White captures en-passant */
+                case RANK_4:                    /* Black captures en-passant */
+                        sq = SQ(F(to),R(fr));
+                        *undo_sp++ = board[sq];
+                        *undo_sp++ = sq;
+                        board[sq] = EMPTY;
+                        break;
+
+                case RANK_2:
+                        if (board[fr] == WHITE_PAWN) { /* Set en-passant flag */
+                                *undo_sp++ = 0;
+                                *undo_sp++ = EP;
+                                board[EP] = to;
+                        } else {                /* Black promotes */
+                                *undo_sp++ = board[fr];
+                                *undo_sp++ = fr;
+                                board[fr] = BLACK_QUEEN + (move>>13);
+                        }
+                        break;
+
+                case RANK_1:                    /* White castles */
+                        unmake_move();
+                        if (to == G1) {
+                                make_move(MOVE(H1,F1));
+                        } else {
+                                make_move(MOVE(A1,D1));
+                        }
+                        break;
+
+                default:
+                        break;
+                }
+        }
+
+        ply++;
+        if (board[to]!=EMPTY ||
+            board[fr]==WHITE_PAWN || board[fr]==BLACK_PAWN
+        ) {
+                *undo_sp++ = board[LAST];
+                *undo_sp++ = LAST;
+                board[LAST] = ply;
+        }
+
+        *undo_sp++ = board[to];
+        *undo_sp++ = to;
+        *undo_sp++ = board[fr];
+        *undo_sp++ = fr;
+
+        board[to] = board[fr];
+        board[fr] = EMPTY;
+
+        if (board[CASTLE] & (castle[fr] | castle[to])) {
+                *undo_sp++ = board[CASTLE];
+                *undo_sp++ = CASTLE;
+                board[CASTLE] &= ~(castle[fr] | castle[to]);
+        }
+}
+
+static int p_push_move(int fr, int to)
+{
+        unsigned short prescore = PRESCORE_EQUAL;
+        int move;
+
+        /* what do we capture */
+        if (board[to] != EMPTY) {
+                prescore += (1<<9) + prescore_piece_value[board[to]];
+        }
+
+        /* does the destination square look safe? */
+        if (WTM) {
+                if (black.attack[to] != 0) { /* defended */
+                        prescore -= prescore_piece_value[board[fr]];
+                }
+        } else {
+                if (white.attack[to] != 0) { /* defended */
+                        prescore -= prescore_piece_value[board[fr]];
+                }
+        }
+
+        if (prescore >= caps) {
+                move = MOVE(fr, to);
+                move_sp->move = move;
+
+		/*SIMPLE history was removed*/
+                move_sp->prescore = prescore /*| history[move]*/;
+                move_sp++;
+                return 1;
+        }
+        return 0;
+}
+
+static void p_push_special_move(int fr, int to)
+{
+        int move;
+
+        move = MOVE(fr, to);
+
+	/*SIMPLE history was removed*/
+        move_sp->prescore = PRESCORE_EQUAL /*| history[move]*/;
+        move_sp->move = move | SPECIAL;
+        move_sp++;
+}
+
+static void p_push_pawn_move(int fr, int to)
+{
+        if ((R(to) == RANK_8) || (R(to) == RANK_1)) {
+                push_special_move(fr, to);          /* queen promotion */
+                push_special_move(fr, to);          /* rook promotion */
+                move_sp[-1].move += 1<<13;
+                push_special_move(fr, to);          /* bishop promotion */
+                move_sp[-1].move += 2<<13;
+                push_special_move(fr, to);          /* knight promotion */
+                move_sp[-1].move += 3<<13;
+        } else {
+                push_move(fr, to);
+        }
+}
+
+
+static void p_gen_slides(int fr, byte dirs)
+{
+        int vector;
+        int to;
+        byte dir = 0;
+
+        dirs &= king_dirs[fr];
+        do {
+                dir -= dirs;
+                dir &= dirs;
+                vector = king_step[dir];
+                to = fr;
+                do {
+                        to += vector;
+                        if (board[to] != EMPTY) {
+                                if (PIECE_COLOR(board[to]) != WTM) {
+                                        push_move(fr, to);
+                                }
+                                break;
+                        }
+                        push_move(fr, to);
+                } while (dir & king_dirs[to]);
+        } while (dirs -= dir);
+}
+
+
+static int p_test_illegal(int move)
+{
+        make_move(move);
+        compute_attacks();
+        unmake_move();
+        return friend->attack[enemy->king] != 0;
+}
+
+
+static void p_generate_moves(unsigned treshold)
+{
+        int             fr, to;
+        int             pc;
+        byte            dir, dirs;
+
+        caps = treshold;
+
+        for (fr=0; fr<64; fr++) {
+                pc = board[fr];
+                if (!pc || PIECE_COLOR(pc) != WTM) continue;
+
+                /*
+                 *  generate moves for this piece
+                 */
+                switch (pc) {
+                case WHITE_KING:
+                case BLACK_KING:
+                        dir = 0;
+                        dirs = king_dirs[fr];
+                        do {
+                                dir -= dirs;
+                                dir &= dirs;
+                                to = fr+king_step[dir];
+                                if (board[to] != EMPTY &&
+                                    PIECE_COLOR(board[to]) == WTM) continue;
+                                push_move(fr, to);
+                        } while (dirs -= dir);
+                        break;
+
+                case WHITE_QUEEN:
+                case BLACK_QUEEN:
+                        gen_slides(fr, ATK_SLIDER);
+                        break;
+
+                case WHITE_ROOK:
+                case BLACK_ROOK:
+                        gen_slides(fr, ATK_ORTHOGONAL);
+                        break;
+
+                case WHITE_BISHOP:
+                case BLACK_BISHOP:
+                        gen_slides(fr, ATK_DIAGONAL);
+                        break;
+
+                case WHITE_KNIGHT:
+                case BLACK_KNIGHT:
+                        dir = 0;
+                        dirs = knight_dirs[fr];
+                        do {
+                                dir -= dirs;
+                                dir &= dirs;
+                                to = fr+knight_jump[dir];
+                                if (board[to] != EMPTY &&
+                                    PIECE_COLOR(board[to]) == WTM) continue;
+                                push_move(fr, to);
+                        } while (dirs -= dir);
+                        break;
+
+                case WHITE_PAWN:
+                        if (F(fr) != FILE_H) {
+                                to = fr + DIR_N + DIR_E;
+                                if (board[to] >= BLACK_KING) {
+                                        push_pawn_move(fr, to);
+                                }
+                        }
+                        if (F(fr) != FILE_A) {
+                                to = fr + DIR_N - DIR_E;
+                                if (board[to] >= BLACK_KING) {
+                                        push_pawn_move(fr, to);
+                                }
+                        }
+                        to = fr + DIR_N;
+                        if (board[to] != EMPTY) {
+                                break;
+                        }
+                        push_pawn_move(fr, to);
+                        if (R(fr) == RANK_2) {
+                                to += DIR_N;
+                                if (board[to] == EMPTY) {
+                                        if (push_move(fr, to))
+                                        if (black.attack[to-DIR_N]) {
+                                                move_sp[-1].move |= SPECIAL;
+                                        }
+                                }
+                        }
+                        break;
+
+                case BLACK_PAWN:
+                        if (F(fr) != FILE_H) {
+                                to = fr - DIR_N + DIR_E;
+                                if (board[to] && board[to] < BLACK_KING) {
+                                        push_pawn_move(fr, to);
+                                }
+                        }
+                        if (F(fr) != FILE_A) {
+                                to = fr - DIR_N - DIR_E;
+                                if (board[to] && board[to] < BLACK_KING) {
+                                        push_pawn_move(fr, to);
+                                }
+                        }
+                        to = fr - DIR_N;
+                        if (board[to] != EMPTY) {
+                                break;
+                        }
+                        push_pawn_move(fr, to);
+                        if (R(fr) == RANK_7) {
+                                to -= DIR_N;
+                                if (board[to] == EMPTY) {
+                                        if (push_move(fr, to))
+                                        if (white.attack[to+DIR_N]) {
+                                                move_sp[-1].move |= SPECIAL;
+                                        }
+                                }
+                        }
+                        break;
+                }
+        }
+
+        /*
+         *  generate castling moves
+         */
+        if (board[CASTLE] && !enemy->attack[friend->king]) {
+                if (WTM && (board[CASTLE] & CASTLE_WHITE_KING) &&
+                        !board[F1] && !board[G1] &&
+                        !enemy->attack[F1])
+                {
+                        push_special_move(E1, G1);
+                }
+                if (WTM && (board[CASTLE] & CASTLE_WHITE_QUEEN) &&
+                        !board[D1] && !board[C1] && !board[B1] &&
+                        !enemy->attack[D1])
+                {
+                        push_special_move(E1, C1);
+                }
+                if (!WTM && (board[CASTLE] & CASTLE_BLACK_KING) &&
+                        !board[F8] && !board[G8] &&
+                        !enemy->attack[F8])
+                {
+                        push_special_move(E8, G8);
+                }
+                if (!WTM && (board[CASTLE] & CASTLE_BLACK_QUEEN) &&
+                        !board[D8] && !board[C8] && !board[B8] &&
+                        !enemy->attack[D8])
+                {
+                        push_special_move(E8, C8);
+                }
+        }
+
+        /*
+         *  generate en-passant captures
+         */
+        if (board[EP]) {
+                int ep = board[EP];
+
+                if (WTM) {
+                        if (F(ep) != FILE_A && board[ep-DIR_E] == WHITE_PAWN) {
+                                if (push_move(ep-DIR_E, ep+DIR_N))
+                                        move_sp[-1].move |= SPECIAL;
+                        }
+                        if (F(ep) != FILE_H && board[ep+DIR_E] == WHITE_PAWN) {
+                                if (push_move(ep+DIR_E, ep+DIR_N))
+                                        move_sp[-1].move |= SPECIAL;
+                        }
+                } else {
+                        if (F(ep) != FILE_A && board[ep-DIR_E] == BLACK_PAWN) {
+                                if (push_move(ep-DIR_E, ep-DIR_N))
+                                        move_sp[-1].move |= SPECIAL;
+                        }
+                        if (F(ep) != FILE_H && board[ep+DIR_E] == BLACK_PAWN) {
+                                if (push_move(ep+DIR_E, ep-DIR_N))
+                                        move_sp[-1].move |= SPECIAL;
+                        }
+                }
+        }
+}
+
+
+static int p_evaluate(void)
+{
+        int sq;
+        int score = 0;
+
+        int white_has, black_has;
+
+        /*
+         *  stage 1: material+piece_square tables
+         */
+        for (sq=0; sq<64; sq++) {
+                int file;
+
+                if (board[sq] == EMPTY) continue;
+                score += piece_square[board[sq]-1][sq];
+
+                file = F(sq)+1;
+                switch (board[sq]) {
+                case WHITE_PAWN:
+                {
+                        int missing;
+                        if (white.pawns[file] > 1) {
+                                score -= 15;
+                        }
+                        missing = !white.pawns[file-1] + !white.pawns[file+1] +
+                                !black.pawns[file];
+                        score -= missing * missing * 5;
+                        break;
+                }
+                case BLACK_PAWN:
+                {
+                        int missing;
+                        if (black.pawns[file] > 1) {
+                                score += 15;
+                        }
+                        missing = !black.pawns[file-1] + !black.pawns[file+1] +
+                                !white.pawns[file];
+                        score += missing * missing * 5;
+                        break;
+                }
+                case WHITE_ROOK:
+                        if (!white.pawns[file]) {
+                                score += 10;
+                                if (!black.pawns[file]) {
+                                        score += 10;
+                                }
+                        }
+                        break;
+
+                case BLACK_ROOK:
+                        if (!black.pawns[file]) {
+                                score -= 10;
+                                if (!white.pawns[file]) {
+                                        score -= 10;
+                                }
+                        }
+                        break;
+
+                default:
+                        break;
+                }
+        }
+
+        /*
+         *  stage 2: board control
+         */
+        white_has = 0;
+        black_has = 0;
+        for (sq=0; sq<64; sq++) {
+                if (white.attack[sq] > black.attack[sq]) {
+                        white_has += white_control[sq];
+                }
+                if (white.attack[sq] < black.attack[sq]) {
+                        black_has += white_control[FLIP(sq)];
+                }
+        }
+        score += (white_has - black_has);
+
+        /* some noise to randomize play */
+        score += (hash_stack[ply] ^ rnd_seed) % 17 - 8;
+
+        return WTM ? score : -score;
+}
+
+
+static int p_qsearch(int alpha, int beta)
+{
+        int                             best_score;
+        int                             score;
+        struct move                     *moves;
+
+	/*SIMPLE reduced shared variables
+        nodes++;*/
+
+
+	/*SIMPLE no hash
+	  hash_stack[ply] = compute_hash();*/
+        best_score = evaluate();
+        if (best_score >= beta) {
+                return best_score;
+        }
+
+        moves = move_sp;
+        generate_moves(PRESCORE_EQUAL + (1<<9));
+        qsort(moves, move_sp - moves, sizeof(*moves), cmp_move);
+        while (move_sp > moves) {
+                int move;
+
+                move_sp--;
+                move = move_sp->move;
+                make_move(move);
+
+                compute_attacks();
+                if (friend->attack[enemy->king]) {
+                        unmake_move();
+                        continue;
+                }
+
+                score = - qsearch(-beta, -alpha);
+
+                unmake_move();
+
+                if (score <= best_score) {
+                        continue;
+                }
+                best_score = score;
+
+                if (score <= alpha) {
+                        continue;
+                }
+                alpha = score;
+
+                if (score < beta) {
+                        continue;
+                }
+                move_sp = moves; /* fail high: skip remaining moves */
+        }
+        return best_score;
+}
+
+
+
+
 static int p_child_search(int depth, int alpha, int beta)
 {
         int                             best_score = -INF;
@@ -2472,8 +3139,9 @@ static int p_root_search(int maxdepth)
                 }
 		
 
-		for (;m < move_sp;) {
-
+	parallel_code=1;
+	for (;m < move_sp;) {
+		  
 		  /*go into move, check if legal;*/
                         make_move(m->move);
                         compute_attacks();
@@ -2526,6 +3194,7 @@ static int p_root_search(int maxdepth)
                         }
 			m++; /* continue with next move */
                 }
+	parallel_code=0;
 
                 if (move_sp-move_stack <= 1) {
                         break; /* just one move to play */
@@ -2649,7 +3318,7 @@ int main(int argc, char *argv[])
                                 memset(history, 0, sizeof(history));
 
 				if (argc>2 && atoi(argv[2])==1){
-				  move=p_root_search(maxdepth);
+				  move=root_search(maxdepth);
 				    }
 				    else{
                                 move = root_search(maxdepth);
