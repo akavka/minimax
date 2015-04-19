@@ -1,4 +1,5 @@
 
+
 /*----------------------------------------------------------------------+
  |                                                                      |
  |              mscp.c - Marcel's Simple Chess Program                  |
@@ -682,7 +683,9 @@ static int push_move(int fr, int to)
         if (prescore >= caps) {
                 move = MOVE(fr, to);
                 move_sp->move = move;
-                move_sp->prescore = prescore | history[move];
+
+		/*SIMPLE history was removed*/
+                move_sp->prescore = prescore /*| history[move]*/;
                 move_sp++;
                 return 1;
         }
@@ -694,7 +697,9 @@ static void push_special_move(int fr, int to)
         int move;
 
         move = MOVE(fr, to);
-        move_sp->prescore = PRESCORE_EQUAL | history[move];
+
+	/*SIMPLE history was removed*/
+        move_sp->prescore = PRESCORE_EQUAL /*| history[move]*/;
         move_sp->move = move | SPECIAL;
         move_sp++;
 }
@@ -1981,7 +1986,9 @@ static int p_child_search(int depth, int alpha, int beta)
 	int                             oldbeta = beta;
         int                             i, count=0;
 	*/
-        nodes++;
+
+	/*SIMPLE Nodes isn't worth trying to maintain a shared variable.
+	  nodes++;*/
 
 
 
@@ -2061,7 +2068,7 @@ static int p_child_search(int depth, int alpha, int beta)
                 if (incheck) {
                         best_score = -30000;
                 } else {
-                        best_score = 0;
+		         best_score = 0;
                 }
         }
 
@@ -2105,7 +2112,10 @@ static int p_vsearch(int depth, int alpha, int beta)
 	int                             oldbeta = beta;
         int                             i, count=0;
 	*/
+
+	/*SIMPLE removed this to avoid shared variables
         nodes++;
+	*/
 
 
 
@@ -2303,6 +2313,8 @@ static int p_root_search(int maxdepth)
 
 			/*do normal search. Or if end of depth, Q-Search*/
                         if (depth-1 > 0) {
+
+			  /*TEMP change*/
                                 score = -p_vsearch(depth-1, -beta, -alpha);
                         } else {
                                 score = -qsearch(-beta, -alpha);
@@ -2358,6 +2370,8 @@ static int p_root_search(int maxdepth)
 
 			/*do normal search. Or if end of depth, Q-Search*/
                         if (depth-1 > 0) {
+
+			  /*TEMP CHANGE*/
                                 score = -p_child_search(depth-1, -beta, -alpha);
                         } else {
                                 score = -qsearch(-beta, -alpha);
@@ -2513,7 +2527,7 @@ int main(int argc, char *argv[])
                                 memset(&core, 0, sizeof(core));
                                 memset(history, 0, sizeof(history));
 
-								if (argc>2 && atoi(argv[2])==1){
+				if (argc>2 && atoi(argv[2])==1){
 				  move=p_root_search(maxdepth);
 				    }
 				    else{
