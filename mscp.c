@@ -1513,7 +1513,8 @@ static int qsearch(int alpha, int beta)
         int                             score;
         struct move                     *moves;
 
-        nodes++;
+	/*SIMPLE reduced shared variables
+        nodes++;*/
 
 
 	/*SIMPLE no hash
@@ -1576,7 +1577,8 @@ static int search(int depth, int alpha, int beta)
 	int                             oldbeta = beta;
         int                             i, count=0;
 	*/
-        nodes++;
+	/*SIMPLE reduced shared variables
+	  nodes++;*/
 
 
 
@@ -1970,8 +1972,127 @@ struct command mscp_commands[] = {
 
 
 /*Here begins Adam's parallel functions*/
-
 static int p_child_search(int depth, int alpha, int beta)
+{
+        int                             best_score = -INF;
+        int                             best_move = 0;
+        int                             score;
+        struct move                     *moves;
+        int                             incheck = 0;
+
+        /*SIMPLE we cut these variables when we don't use the hash table
+       
+	struct tt                       *tt;
+        int                             oldalpha = alpha;
+	int                             oldbeta = beta;
+        int                             i, count=0;
+	*/
+	/*SIMPLE reduced shared variables
+	  nodes++;*/
+
+
+
+	/*SIMPLE no hash stack
+	  test for draw by repetition*/ 
+        /*hash_stack[ply] = compute_hash();
+        for (i=ply-4; i>=board[LAST]; i-=2) {
+                if (hash_stack[i] == hash_stack[ply]) count++;
+                if (count>=2) return 0;
+		}*/
+
+        
+	/*  check transposition table*/
+	/*
+        tt = &TTABLE[ ((hash_stack[ply]>>16) & (CORE-1)) ];
+        if (tt->hash == (hash_stack[ply] & 0xffffU)) {
+                if (tt->depth >= depth) {
+                        if (tt->flag >= 0) alpha = MAX(alpha, tt->score);
+                        if (tt->flag <= 0) beta = MIN(beta,  tt->score);
+                        if (alpha >= beta) return tt->score;
+                }
+                best_move = tt->move & 07777;
+        }
+
+        history[best_move] |= PRESCORE_HASHMOVE;*/
+        incheck = enemy->attack[friend->king];
+
+        /*
+         *  generate moves
+         */
+        moves = move_sp;
+        generate_moves(0);
+
+        history[best_move] &= 0x3fff;
+        best_move = 0;
+
+        qsort(moves, move_sp - moves, sizeof(*moves), cmp_move);
+
+        /*
+         *  loop over all moves
+         */
+        while (move_sp > moves) {
+                int newdepth;
+                int move;
+                move_sp--;
+                move = move_sp->move;
+                make_move(move);
+                compute_attacks();
+                if (friend->attack[enemy->king]) {
+                        unmake_move();
+                        continue;
+                }
+
+                newdepth = incheck ? depth : depth-1;
+                if (newdepth <= 0) {
+                        score = -qsearch(-beta, -alpha);
+                } else {
+                        score = -p_child_search(newdepth, -beta, -alpha);
+                }
+                if (score < -29000) score++;    /* adjust for mate-in-n */
+
+                unmake_move();
+
+                if (score <= best_score) continue;
+                best_score = score;
+                best_move = move;
+
+                if (score <= alpha) continue;
+                alpha = score;
+
+                if (score < beta) continue;
+
+                move_sp = moves; /* fail high: skip remaining moves */
+        }
+
+        if (best_score == -INF) { /* deal with mate and stalemate */
+                if (incheck) {
+                        best_score = -30000;
+                } else {
+                        best_score = 0;
+                }
+        }
+
+
+
+
+	/*	SIMPLE getting rid of hash table
+       history[best_move & 07777] += depth*depth;
+        if (history[best_move & 07777] > 511) {
+                int m;
+                for (m=0; m<SPECIAL; m++) {
+		history[m] >>= 4;  */   /*  scaling */
+	/*}
+        }
+
+        tt->hash = hash_stack[ply] & 0xffffU;
+        tt->move = best_move;
+        tt->score = best_score;
+        tt->depth = depth;
+        tt->flag = (oldalpha < best_score) - (best_score < oldbeta);
+	*/
+        return best_score;
+}
+static int p_child_search2(int depth, int alpha, int beta)
 {
         int                             best_score = -INF;
         int                             best_move = 0;
@@ -2046,7 +2167,7 @@ static int p_child_search(int depth, int alpha, int beta)
                 if (newdepth <= 0) {
                         score = -qsearch(-beta, -alpha);
                 } else {
-                        score = -p_child_search(newdepth, -beta, -alpha);
+                        score = -p_child_search2(newdepth, -beta, -alpha);
                 }
                 if (score < -29000) score++;    /* adjust for mate-in-n */
 
