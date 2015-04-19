@@ -415,7 +415,7 @@ static void atk_slide(int sq, byte dirs, struct side *s)
 
         byte dir = 0;
         int to;
-	if (parallel_code){
+	if (0){
 	  fprintf(stderr, "Calling serial version during parallel code.\n");
 	}
 
@@ -437,7 +437,7 @@ static void compute_attacks(void)
         int sq, to, pc;
         byte dir, dirs;
  
-	if (parallel_code){
+	if (0){
 	  fprintf(stderr, "Calling serial version during parallel code.\n");
 	}
 
@@ -3318,7 +3318,7 @@ int main(int argc, char *argv[])
                                 memset(history, 0, sizeof(history));
 
 				if (argc>2 && atoi(argv[2])==1){
-				  move=root_search(maxdepth);
+				  move=p_root_search(maxdepth);
 				    }
 				    else{
                                 move = root_search(maxdepth);
