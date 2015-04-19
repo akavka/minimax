@@ -416,7 +416,7 @@ static void atk_slide(int sq, byte dirs, struct side *s)
         byte dir = 0;
         int to;
 	if (parallel_code){
-	  fprintf(stderr, "Calling serial version during parallel code.\n");
+	  fprintf(stderr, "Calling serial version of atk_slide during parallel code.\n");
 	}
 
         dirs &= king_dirs[sq];
@@ -436,10 +436,12 @@ static void compute_attacks(void)
 {
         int sq, to, pc;
         byte dir, dirs;
- 
-	if (0){
-	  fprintf(stderr, "Calling serial version during parallel code.\n");
+
+
+	if (parallel_code){
+	  fprintf(stderr, "Calling serial version of compute_attacks  during parallel code.\n");
 	}
+
 
         memset(&white, 0, sizeof white);
         memset(&black, 0, sizeof black);
@@ -552,6 +554,9 @@ static void compute_attacks(void)
 static void unmake_move(void)
 {
         int sq;
+	if (parallel_code){
+	  fprintf(stderr, "Calling serial version of unmake_move during parallel code.\n");
+	}
 
         for (;;) {
                 sq = *--undo_sp;
@@ -566,6 +571,9 @@ static void make_move(int move)
         int fr;
         int to;
         int sq;
+	if (parallel_code){
+	  fprintf(stderr, "Calling serial version of make_move during parallel code.\n");
+	}
 
         *undo_sp++ = -1;                        /* Place sentinel */
 
@@ -672,6 +680,11 @@ static int push_move(int fr, int to)
         unsigned short prescore = PRESCORE_EQUAL;
         int move;
 
+	if (parallel_code){
+	  fprintf(stderr, "Calling serial version of push_move during parallel code.\n");
+	}
+
+
         /* what do we capture */
         if (board[to] != EMPTY) {
                 prescore += (1<<9) + prescore_piece_value[board[to]];
@@ -702,6 +715,11 @@ static int push_move(int fr, int to)
 
 static void push_special_move(int fr, int to)
 {
+	if (parallel_code){
+	  fprintf(stderr, "Calling serial version of push_special during parallel code.\n");
+	}
+
+
         int move;
 
         move = MOVE(fr, to);
@@ -714,6 +732,11 @@ static void push_special_move(int fr, int to)
 
 static void push_pawn_move(int fr, int to)
 {
+	if (parallel_code){
+	  fprintf(stderr, "Calling serial version of push_pawn during parallel code.\n");
+	}
+
+
         if ((R(to) == RANK_8) || (R(to) == RANK_1)) {
                 push_special_move(fr, to);          /* queen promotion */
                 push_special_move(fr, to);          /* rook promotion */
@@ -732,8 +755,14 @@ static void gen_slides(int fr, byte dirs)
         int vector;
         int to;
         byte dir = 0;
-
         dirs &= king_dirs[fr];
+
+
+	if (parallel_code){
+	  fprintf(stderr, "Calling serial version of gen_slides during parallel code.\n");
+	}
+
+
         do {
                 dir -= dirs;
                 dir &= dirs;
@@ -764,6 +793,10 @@ static int cmp_move(const void *ap, const void *bp)
 
 static int test_illegal(int move)
 {
+	if (parallel_code){
+	  fprintf(stderr, "Calling serial version of test_illegal during parallel code.\n");
+	}
+
         make_move(move);
         compute_attacks();
         unmake_move();
@@ -775,6 +808,9 @@ static void generate_moves(unsigned treshold)
         int             fr, to;
         int             pc;
         byte            dir, dirs;
+	if (parallel_code){
+	  fprintf(stderr, "Calling serial version of generate moves during parallel code.\n");
+	}
 
         caps = treshold;
 
@@ -1434,6 +1470,10 @@ static int evaluate(void)
 
         int white_has, black_has;
 
+if (parallel_code){
+	  fprintf(stderr, "Calling serial version of evailuate during parallel code.\n");
+	}
+
         /*
          *  stage 1: material+piece_square tables
          */
@@ -1525,6 +1565,11 @@ static int qsearch(int alpha, int beta)
         nodes++;*/
 
 
+
+if (parallel_code){
+	  fprintf(stderr, "Calling serial version of qsearch during parallel code.\n");
+	}
+
 	/*SIMPLE no hash
 	  hash_stack[ply] = compute_hash();*/
         best_score = evaluate();
@@ -1577,6 +1622,11 @@ static int search(int depth, int alpha, int beta)
         int                             score;
         struct move                     *moves;
         int                             incheck = 0;
+
+if (parallel_code){
+	  fprintf(stderr, "Calling serial version of search during parallel code.\n");
+	}
+
 
         /*SIMPLE we cut these variables when we don't use the hash table
        
@@ -1987,7 +2037,6 @@ static void p_atk_slide(int sq, byte dirs, struct side *s)
 {
         byte dir = 0;
         int to;
-
         dirs &= king_dirs[sq];
         do {
                 dir -= dirs;
