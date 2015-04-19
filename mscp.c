@@ -715,12 +715,13 @@ static int push_move(int fr, int to)
 
 static void push_special_move(int fr, int to)
 {
+        int move;
 	if (parallel_code){
 	  fprintf(stderr, "Calling serial version of push_special during parallel code.\n");
 	}
 
 
-        int move;
+
 
         move = MOVE(fr, to);
 
@@ -2033,7 +2034,7 @@ struct command mscp_commands[] = {
 Here begins Adam's parallel functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
-static void p_atk_slide(int sq, byte dirs, struct side *s)
+static void p_atk_slide(int sq, byte dirs, struct side *s, byte* p_board)
 {
         byte dir = 0;
         int to;
@@ -2045,13 +2046,13 @@ static void p_atk_slide(int sq, byte dirs, struct side *s)
                 do {
                         to += king_step[dir];
                         s->attack[to] += 1;
-                        if (board[to] != EMPTY) break;
+                        if (p_board[to] != EMPTY) break;
                 } while (dir & king_dirs[to]);
         } while (dirs -= dir);
 }
 
 
-static void p_compute_attacks(void)
+static void p_compute_attacks(byte* p_board)
 {
         int sq, to, pc;
         byte dir, dirs;
@@ -2063,7 +2064,7 @@ static void p_compute_attacks(void)
         enemy = WTM ? &black : &white;
 
         for (sq=0; sq<64; sq++) {
-                pc = board[sq];
+                pc = p_board[sq];
                 if (pc == EMPTY) continue;
 
                 switch (pc) {
@@ -2092,27 +2093,27 @@ static void p_compute_attacks(void)
                         break;
 
                 case WHITE_QUEEN:
-                        p_atk_slide(sq, ATK_SLIDER, &white);
+		  p_atk_slide(sq, ATK_SLIDER, &white, p_board);
                         break;
 
                 case BLACK_QUEEN:
-                        p_atk_slide(sq, ATK_SLIDER, &black);
+		  p_atk_slide(sq, ATK_SLIDER, &black, p_board);
                         break;
 
                 case WHITE_ROOK:
-                        p_atk_slide(sq, ATK_ORTHOGONAL, &white);
+		  p_atk_slide(sq, ATK_ORTHOGONAL, &white, p_board);
                         break;
 
                 case BLACK_ROOK:
-                        p_atk_slide(sq, ATK_ORTHOGONAL, &black);
+		  p_atk_slide(sq, ATK_ORTHOGONAL, &black, p_board);
                         break;
 
                 case WHITE_BISHOP:
-                        p_atk_slide(sq, ATK_DIAGONAL, &white);
+		  p_atk_slide(sq, ATK_DIAGONAL, &white, p_board);
                         break;
 
                 case BLACK_BISHOP:
-                        p_atk_slide(sq, ATK_DIAGONAL, &black);
+		  p_atk_slide(sq, ATK_DIAGONAL, &black, p_board);
                         break;
 
                 case WHITE_KNIGHT:
@@ -2160,20 +2161,20 @@ static void p_compute_attacks(void)
         }
 }
 
-static void p_unmake_move(void)
+static void p_unmake_move(byte* p_board)
 {
         int sq;
 
         for (;;) {
                 sq = *--undo_sp;
                 if (sq < 0) break;               /* Found sentinel */
-                board[sq] = *--undo_sp;
+                p_board[sq] = *--undo_sp;
         }
         ply--;
 }
 
 
-static void p_make_move(int move)
+static void p_make_move(int move, byte* p_board)
 {
         int fr;
         int to;
@@ -2181,10 +2182,10 @@ static void p_make_move(int move)
 
         *undo_sp++ = -1;                        /* Place sentinel */
 
-        if (board[EP]) {                        /* Clear en-passant info */
-                *undo_sp++ = board[EP];
+        if (p_board[EP]) {                        /* Clear en-passant info */
+                *undo_sp++ = p_board[EP];
                 *undo_sp++ = EP;
-                board[EP] = 0;
+                p_board[EP] = 0;
         }
 
         to = TO(move);
@@ -2193,52 +2194,52 @@ static void p_make_move(int move)
         if (move & SPECIAL) {                   /* Special moves first */
                 switch (R(fr)) {
                 case RANK_8:                    /* Black castles */
-                        p_unmake_move();
+                        p_unmake_move(p_board);
                         if (to == G8) {
-                                p_make_move(MOVE(H8,F8));
+			  p_make_move(MOVE(H8,F8), p_board);
                         } else {
-                                p_make_move(MOVE(A8,D8));
+			  p_make_move(MOVE(A8,D8), p_board);
                         }
                         break;
 
                 case RANK_7:
-                        if (board[fr] == BLACK_PAWN) { /* Set en-passant flag */
+                        if (p_board[fr] == BLACK_PAWN) { /* Set en-passant flag */
                                 *undo_sp++ = 0;
                                 *undo_sp++ = EP;
-                                board[EP] = to;
+                                p_board[EP] = to;
                         } else {                /* White promotes */
-                                *undo_sp++ = board[fr];
+                                *undo_sp++ = p_board[fr];
                                 *undo_sp++ = fr;
-                                board[fr] = WHITE_QUEEN + (move>>13);
+                                p_board[fr] = WHITE_QUEEN + (move>>13);
                         }
                         break;
 
                 case RANK_5:                    /* White captures en-passant */
                 case RANK_4:                    /* Black captures en-passant */
                         sq = SQ(F(to),R(fr));
-                        *undo_sp++ = board[sq];
+                        *undo_sp++ = p_board[sq];
                         *undo_sp++ = sq;
-                        board[sq] = EMPTY;
+                        p_board[sq] = EMPTY;
                         break;
 
                 case RANK_2:
-                        if (board[fr] == WHITE_PAWN) { /* Set en-passant flag */
+                        if (p_board[fr] == WHITE_PAWN) { /* Set en-passant flag */
                                 *undo_sp++ = 0;
                                 *undo_sp++ = EP;
-                                board[EP] = to;
+                                p_board[EP] = to;
                         } else {                /* Black promotes */
-                                *undo_sp++ = board[fr];
+                                *undo_sp++ = p_board[fr];
                                 *undo_sp++ = fr;
-                                board[fr] = BLACK_QUEEN + (move>>13);
+                                p_board[fr] = BLACK_QUEEN + (move>>13);
                         }
                         break;
 
                 case RANK_1:                    /* White castles */
-                        p_unmake_move();
+                        p_unmake_move(p_board);
                         if (to == G1) {
-                                p_make_move(MOVE(H1,F1));
+			  p_make_move(MOVE(H1,F1), p_board);
                         } else {
-                                p_make_move(MOVE(A1,D1));
+			  p_make_move(MOVE(A1,D1), p_board);
                         }
                         break;
 
@@ -2248,47 +2249,47 @@ static void p_make_move(int move)
         }
 
         ply++;
-        if (board[to]!=EMPTY ||
-            board[fr]==WHITE_PAWN || board[fr]==BLACK_PAWN
+        if (p_board[to]!=EMPTY ||
+            p_board[fr]==WHITE_PAWN || p_board[fr]==BLACK_PAWN
         ) {
-                *undo_sp++ = board[LAST];
+                *undo_sp++ = p_board[LAST];
                 *undo_sp++ = LAST;
-                board[LAST] = ply;
+                p_board[LAST] = ply;
         }
 
-        *undo_sp++ = board[to];
+        *undo_sp++ = p_board[to];
         *undo_sp++ = to;
-        *undo_sp++ = board[fr];
+        *undo_sp++ = p_board[fr];
         *undo_sp++ = fr;
 
-        board[to] = board[fr];
-        board[fr] = EMPTY;
+        p_board[to] = p_board[fr];
+        p_board[fr] = EMPTY;
 
-        if (board[CASTLE] & (castle[fr] | castle[to])) {
-                *undo_sp++ = board[CASTLE];
+        if (p_board[CASTLE] & (castle[fr] | castle[to])) {
+                *undo_sp++ = p_board[CASTLE];
                 *undo_sp++ = CASTLE;
-                board[CASTLE] &= ~(castle[fr] | castle[to]);
+                p_board[CASTLE] &= ~(castle[fr] | castle[to]);
         }
 }
 
-static int p_push_move(int fr, int to)
+static int p_push_move(int fr, int to, byte* p_board)
 {
         unsigned short prescore = PRESCORE_EQUAL;
         int move;
 
         /* what do we capture */
-        if (board[to] != EMPTY) {
-                prescore += (1<<9) + prescore_piece_value[board[to]];
+        if (p_board[to] != EMPTY) {
+                prescore += (1<<9) + prescore_piece_value[p_board[to]];
         }
 
         /* does the destination square look safe? */
         if (WTM) {
                 if (black.attack[to] != 0) { /* defended */
-                        prescore -= prescore_piece_value[board[fr]];
+                        prescore -= prescore_piece_value[p_board[fr]];
                 }
         } else {
                 if (white.attack[to] != 0) { /* defended */
-                        prescore -= prescore_piece_value[board[fr]];
+                        prescore -= prescore_piece_value[p_board[fr]];
                 }
         }
 
@@ -2316,7 +2317,7 @@ static void p_push_special_move(int fr, int to)
         move_sp++;
 }
 
-static void p_push_pawn_move(int fr, int to)
+static void p_push_pawn_move(int fr, int to, byte* p_board)
 {
         if ((R(to) == RANK_8) || (R(to) == RANK_1)) {
                 p_push_special_move(fr, to);          /* queen promotion */
@@ -2327,12 +2328,12 @@ static void p_push_pawn_move(int fr, int to)
                 p_push_special_move(fr, to);          /* knight promotion */
                 move_sp[-1].move += 3<<13;
         } else {
-                p_push_move(fr, to);
+	  p_push_move(fr, to, p_board);
         }
 }
 
 
-static void p_gen_slides(int fr, byte dirs)
+static void p_gen_slides(int fr, byte dirs, byte*p_board)
 {
         int vector;
         int to;
@@ -2346,28 +2347,28 @@ static void p_gen_slides(int fr, byte dirs)
                 to = fr;
                 do {
                         to += vector;
-                        if (board[to] != EMPTY) {
-                                if (PIECE_COLOR(board[to]) != WTM) {
-                                        p_push_move(fr, to);
+                        if (p_board[to] != EMPTY) {
+                                if (PIECE_COLOR(p_board[to]) != WTM) {
+				  p_push_move(fr, to, p_board);
                                 }
                                 break;
                         }
-                        p_push_move(fr, to);
+                        p_push_move(fr, to,p_board);
                 } while (dir & king_dirs[to]);
         } while (dirs -= dir);
 }
 
 
-static int p_test_illegal(int move)
+static int p_test_illegal(int move, byte* p_board)
 {
-        p_make_move(move);
-        p_compute_attacks();
-        p_unmake_move();
+  p_make_move(move, p_board);
+        p_compute_attacks(p_board);
+        p_unmake_move(p_board);
         return friend->attack[enemy->king] != 0;
 }
 
 
-static void p_generate_moves(unsigned treshold)
+static void p_generate_moves(unsigned treshold, byte*p_board)
 {
         int             fr, to;
         int             pc;
@@ -2376,7 +2377,7 @@ static void p_generate_moves(unsigned treshold)
         caps = treshold;
 
         for (fr=0; fr<64; fr++) {
-                pc = board[fr];
+                pc = p_board[fr];
                 if (!pc || PIECE_COLOR(pc) != WTM) continue;
 
                 /*
@@ -2391,25 +2392,25 @@ static void p_generate_moves(unsigned treshold)
                                 dir -= dirs;
                                 dir &= dirs;
                                 to = fr+king_step[dir];
-                                if (board[to] != EMPTY &&
-                                    PIECE_COLOR(board[to]) == WTM) continue;
-                                p_push_move(fr, to);
+                                if (p_board[to] != EMPTY &&
+                                    PIECE_COLOR(p_board[to]) == WTM) continue;
+                                p_push_move(fr, to, p_board);
                         } while (dirs -= dir);
                         break;
 
                 case WHITE_QUEEN:
                 case BLACK_QUEEN:
-                        p_gen_slides(fr, ATK_SLIDER);
+		  p_gen_slides(fr, ATK_SLIDER, p_board);
                         break;
 
                 case WHITE_ROOK:
                 case BLACK_ROOK:
-                        p_gen_slides(fr, ATK_ORTHOGONAL);
+		  p_gen_slides(fr, ATK_ORTHOGONAL, p_board);
                         break;
 
                 case WHITE_BISHOP:
                 case BLACK_BISHOP:
-                        p_gen_slides(fr, ATK_DIAGONAL);
+		  p_gen_slides(fr, ATK_DIAGONAL, p_board);
                         break;
 
                 case WHITE_KNIGHT:
@@ -2420,34 +2421,34 @@ static void p_generate_moves(unsigned treshold)
                                 dir -= dirs;
                                 dir &= dirs;
                                 to = fr+knight_jump[dir];
-                                if (board[to] != EMPTY &&
-                                    PIECE_COLOR(board[to]) == WTM) continue;
-                                p_push_move(fr, to);
+                                if (p_board[to] != EMPTY &&
+                                    PIECE_COLOR(p_board[to]) == WTM) continue;
+                                p_push_move(fr, to, p_board);
                         } while (dirs -= dir);
                         break;
 
                 case WHITE_PAWN:
                         if (F(fr) != FILE_H) {
                                 to = fr + DIR_N + DIR_E;
-                                if (board[to] >= BLACK_KING) {
-                                        p_push_pawn_move(fr, to);
+                                if (p_board[to] >= BLACK_KING) {
+				  p_push_pawn_move(fr, to, p_board);
                                 }
                         }
                         if (F(fr) != FILE_A) {
                                 to = fr + DIR_N - DIR_E;
-                                if (board[to] >= BLACK_KING) {
-                                        p_push_pawn_move(fr, to);
+                                if (p_board[to] >= BLACK_KING) {
+				  p_push_pawn_move(fr, to, p_board);
                                 }
                         }
                         to = fr + DIR_N;
-                        if (board[to] != EMPTY) {
+                        if (p_board[to] != EMPTY) {
                                 break;
                         }
-                        p_push_pawn_move(fr, to);
+                        p_push_pawn_move(fr, to, p_board);
                         if (R(fr) == RANK_2) {
                                 to += DIR_N;
-                                if (board[to] == EMPTY) {
-                                        if (p_push_move(fr, to))
+                                if (p_board[to] == EMPTY) {
+				  if (p_push_move(fr, to,p_board))
                                         if (black.attack[to-DIR_N]) {
                                                 move_sp[-1].move |= SPECIAL;
                                         }
@@ -2458,25 +2459,25 @@ static void p_generate_moves(unsigned treshold)
                 case BLACK_PAWN:
                         if (F(fr) != FILE_H) {
                                 to = fr - DIR_N + DIR_E;
-                                if (board[to] && board[to] < BLACK_KING) {
-                                        p_push_pawn_move(fr, to);
+                                if (p_board[to] && p_board[to] < BLACK_KING) {
+				  p_push_pawn_move(fr, to, p_board);
                                 }
                         }
                         if (F(fr) != FILE_A) {
                                 to = fr - DIR_N - DIR_E;
-                                if (board[to] && board[to] < BLACK_KING) {
-                                        p_push_pawn_move(fr, to);
+                                if (p_board[to] && p_board[to] < BLACK_KING) {
+				  p_push_pawn_move(fr, to, p_board);
                                 }
                         }
                         to = fr - DIR_N;
-                        if (board[to] != EMPTY) {
+                        if (p_board[to] != EMPTY) {
                                 break;
                         }
-                        p_push_pawn_move(fr, to);
+                        p_push_pawn_move(fr, to, p_board);
                         if (R(fr) == RANK_7) {
                                 to -= DIR_N;
-                                if (board[to] == EMPTY) {
-                                        if (p_push_move(fr, to))
+                                if (p_board[to] == EMPTY) {
+				  if (p_push_move(fr, to, p_board))
                                         if (white.attack[to+DIR_N]) {
                                                 move_sp[-1].move |= SPECIAL;
                                         }
@@ -2489,27 +2490,27 @@ static void p_generate_moves(unsigned treshold)
         /*
          *  generate castling moves
          */
-        if (board[CASTLE] && !enemy->attack[friend->king]) {
-                if (WTM && (board[CASTLE] & CASTLE_WHITE_KING) &&
-                        !board[F1] && !board[G1] &&
+        if (p_board[CASTLE] && !enemy->attack[friend->king]) {
+                if (WTM && (p_board[CASTLE] & CASTLE_WHITE_KING) &&
+                        !p_board[F1] && !p_board[G1] &&
                         !enemy->attack[F1])
                 {
                         p_push_special_move(E1, G1);
                 }
-                if (WTM && (board[CASTLE] & CASTLE_WHITE_QUEEN) &&
-                        !board[D1] && !board[C1] && !board[B1] &&
+                if (WTM && (p_board[CASTLE] & CASTLE_WHITE_QUEEN) &&
+                        !p_board[D1] && !p_board[C1] && !p_board[B1] &&
                         !enemy->attack[D1])
                 {
                         p_push_special_move(E1, C1);
                 }
-                if (!WTM && (board[CASTLE] & CASTLE_BLACK_KING) &&
-                        !board[F8] && !board[G8] &&
+                if (!WTM && (p_board[CASTLE] & CASTLE_BLACK_KING) &&
+                        !p_board[F8] && !p_board[G8] &&
                         !enemy->attack[F8])
                 {
                         p_push_special_move(E8, G8);
                 }
-                if (!WTM && (board[CASTLE] & CASTLE_BLACK_QUEEN) &&
-                        !board[D8] && !board[C8] && !board[B8] &&
+                if (!WTM && (p_board[CASTLE] & CASTLE_BLACK_QUEEN) &&
+                        !p_board[D8] && !p_board[C8] && !p_board[B8] &&
                         !enemy->attack[D8])
                 {
                         p_push_special_move(E8, C8);
@@ -2519,25 +2520,25 @@ static void p_generate_moves(unsigned treshold)
         /*
          *  generate en-passant captures
          */
-        if (board[EP]) {
-                int ep = board[EP];
+        if (p_board[EP]) {
+                int ep = p_board[EP];
 
                 if (WTM) {
-                        if (F(ep) != FILE_A && board[ep-DIR_E] == WHITE_PAWN) {
-                                if (p_push_move(ep-DIR_E, ep+DIR_N))
+                        if (F(ep) != FILE_A && p_board[ep-DIR_E] == WHITE_PAWN) {
+			  if (p_push_move(ep-DIR_E, ep+DIR_N, p_board))
                                         move_sp[-1].move |= SPECIAL;
                         }
-                        if (F(ep) != FILE_H && board[ep+DIR_E] == WHITE_PAWN) {
-                                if (p_push_move(ep+DIR_E, ep+DIR_N))
+                        if (F(ep) != FILE_H && p_board[ep+DIR_E] == WHITE_PAWN) {
+			  if (p_push_move(ep+DIR_E, ep+DIR_N, p_board))
                                         move_sp[-1].move |= SPECIAL;
                         }
                 } else {
-                        if (F(ep) != FILE_A && board[ep-DIR_E] == BLACK_PAWN) {
-                                if (p_push_move(ep-DIR_E, ep-DIR_N))
+                        if (F(ep) != FILE_A && p_board[ep-DIR_E] == BLACK_PAWN) {
+			  if (p_push_move(ep-DIR_E, ep-DIR_N, p_board))
                                         move_sp[-1].move |= SPECIAL;
                         }
-                        if (F(ep) != FILE_H && board[ep+DIR_E] == BLACK_PAWN) {
-                                if (p_push_move(ep+DIR_E, ep-DIR_N))
+                        if (F(ep) != FILE_H && p_board[ep+DIR_E] == BLACK_PAWN) {
+			  if (p_push_move(ep+DIR_E, ep-DIR_N, p_board))
                                         move_sp[-1].move |= SPECIAL;
                         }
                 }
@@ -2545,7 +2546,7 @@ static void p_generate_moves(unsigned treshold)
 }
 
 
-static int p_evaluate(void)
+static int p_evaluate(byte* p_board)
 {
         int sq;
         int score = 0;
@@ -2558,11 +2559,11 @@ static int p_evaluate(void)
         for (sq=0; sq<64; sq++) {
                 int file;
 
-                if (board[sq] == EMPTY) continue;
-                score += piece_square[board[sq]-1][sq];
+                if (p_board[sq] == EMPTY) continue;
+                score += piece_square[p_board[sq]-1][sq];
 
                 file = F(sq)+1;
-                switch (board[sq]) {
+                switch (p_board[sq]) {
                 case WHITE_PAWN:
                 {
                         int missing;
@@ -2630,7 +2631,7 @@ static int p_evaluate(void)
 }
 
 
-static int p_qsearch(int alpha, int beta)
+static int p_qsearch(int alpha, int beta, byte* p_board)
 {
         int                             best_score;
         int                             score;
@@ -2642,30 +2643,30 @@ static int p_qsearch(int alpha, int beta)
 
 	/*SIMPLE no hash
 	  hash_stack[ply] = compute_hash();*/
-        best_score = p_evaluate();
+        best_score = p_evaluate(p_board);
         if (best_score >= beta) {
                 return best_score;
         }
 
         moves = move_sp;
-        p_generate_moves(PRESCORE_EQUAL + (1<<9));
+        p_generate_moves(PRESCORE_EQUAL + (1<<9), p_board);
         qsort(moves, move_sp - moves, sizeof(*moves), cmp_move);
         while (move_sp > moves) {
                 int move;
 
                 move_sp--;
                 move = move_sp->move;
-                p_make_move(move);
+                p_make_move(move, p_board);
 
-                p_compute_attacks();
+                p_compute_attacks(p_board);
                 if (friend->attack[enemy->king]) {
-                        p_unmake_move();
+                        p_unmake_move(p_board);
                         continue;
                 }
 
-                score = - p_qsearch(-beta, -alpha);
+                score = - p_qsearch(-beta, -alpha, p_board);
 
-                p_unmake_move();
+                p_unmake_move(p_board);
 
                 if (score <= best_score) {
                         continue;
@@ -2688,7 +2689,7 @@ static int p_qsearch(int alpha, int beta)
 
 
 
-static int p_child_search(int depth, int alpha, int beta)
+static int p_child_search(int depth, int alpha, int beta, byte* p_board)
 {
         int                             best_score = -INF;
         int                             best_move = 0;
@@ -2736,7 +2737,7 @@ static int p_child_search(int depth, int alpha, int beta)
          *  p_generate moves
          */
         moves = move_sp;
-        p_generate_moves(0);
+        p_generate_moves(0, p_board);
 
         history[best_move] &= 0x3fff;
         best_move = 0;
@@ -2751,22 +2752,25 @@ static int p_child_search(int depth, int alpha, int beta)
                 int move;
                 move_sp--;
                 move = move_sp->move;
-                p_make_move(move);
-                p_compute_attacks();
+                p_make_move(move, p_board);
+                p_compute_attacks(p_board);
                 if (friend->attack[enemy->king]) {
-                        p_unmake_move();
+                        p_unmake_move(p_board);
                         continue;
                 }
 
                 newdepth = incheck ? depth : depth-1;
                 if (newdepth <= 0) {
-                        score = -p_qsearch(-beta, -alpha);
+		  /*TEMP should be deep copy of p_board? or not parallelized?*/
+		  score = -p_qsearch(-beta, -alpha, p_board);
                 } else {
-                        score = -p_child_search(newdepth, -beta, -alpha);
+
+		  /*TEMP should be deep copy of p_board or note parallelized?*/
+		  score = -p_child_search(newdepth, -beta, -alpha, p_board);
                 }
                 if (score < -29000) score++;    /* adjust for mate-in-n */
 
-                p_unmake_move();
+                p_unmake_move(p_board);
 
                 if (score <= best_score) continue;
                 best_score = score;
@@ -2915,24 +2919,38 @@ static int p_vsearch(int depth, int alpha, int beta)
         while (move_sp > moves) {
                 int newdepth;
                 int move;
+		byte* p_board=board;
                 move_sp--;
                 move = move_sp->move;
-                p_make_move(move);
-                p_compute_attacks();
+
+		/*TEMP this should be deep copy of board*/
+
+                p_make_move(move, p_board);
+
+		/*TEMP this needs to be a deep copy of board*/
+                p_compute_attacks(p_board);
                 if (friend->attack[enemy->king]) {
-                        p_unmake_move();
+
+
+		  /*TEMP this should be a deep copy of board*/
+                        p_unmake_move(p_board);
                         continue;
                 }
 
                 newdepth = incheck ? depth : depth-1;
                 if (newdepth <= 0) {
-                        score = -p_qsearch(-beta, -alpha);
+
+		  /*TEMP this should be a deep copy of board*/
+		  score = -p_qsearch(-beta, -alpha, p_board);
                 } else {
-                        score = -p_child_search(newdepth, -beta, -alpha);
+		  /*TEMP this should be deep copy of p_board*/
+		  score = -p_child_search(newdepth, -beta, -alpha, p_board);
                 }
                 if (score < -29000) score++;    /* adjust for mate-in-n */
 
-                p_unmake_move();
+
+		  /*TEMP this should be a deep copy of board*/
+                p_unmake_move(p_board);
 
                 if (score <= best_score) continue;
                 best_score = score;
@@ -3070,12 +3088,18 @@ static int p_root_search(int maxdepth)
 
 	parallel_code=1;
 	for (;m < move_sp;) {
-		  
+	  byte* p_board=board;
 		  /*go into move, check if legal;*/
-                        p_make_move(m->move);
-                        p_compute_attacks();
+	  
+	  /*TEMP this should be a deep copy of board*/
+p_make_move(m->move, board);
+
+			/*TEMP this needs to be a deep copy of board.*/
+                        p_compute_attacks(p_board);
                         if (friend->attack[enemy->king] != 0) { /* illegal? */
-                                p_unmake_move();
+                                
+/*TEMP this needs to be a deep copy of board.*/
+			  p_unmake_move(p_board);
                                 *m = *--move_sp; /* drop this move */
                                 continue;
                         }
@@ -3089,12 +3113,16 @@ static int p_root_search(int maxdepth)
 			/*do normal search. Or if end of depth, Q-Search*/
                         if (depth-1 > 0) {
 
-			  /*TEMP CHANGE*/
-                                score = -p_child_search(depth-1, -beta, -alpha);
+			  /*TEMP  This needs to be deep copy of board*/
+			  score = -p_child_search(depth-1, -beta, -alpha, p_board);
                         } else {
-                                score = -p_qsearch(-beta, -alpha);
+
+			  /*TEMP  This needs to be deep copy of board*/
+			  score = -p_qsearch(-beta, -alpha, p_board);
                         }
-                        p_unmake_move();
+
+/*TEMP  This needs to be deep copy of board*/
+                        p_unmake_move(p_board);
 
 
 			/*Fix window if it was too narrow.*/
