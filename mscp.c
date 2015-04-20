@@ -2545,6 +2545,21 @@ static void p_generate_moves(unsigned treshold, byte*p_board)
         }
 }
 
+/* Compute 32-bit Zobrist hash key. Normally 32 bits this is too small,
+   but for MSCP's small searches it is OK */
+static unsigned long p_compute_hash(byte* p_board)
+{
+        unsigned long hash = 0;
+        int sq;
+
+        for (sq=0; sq<64; sq++) {
+                if (p_board[sq] != EMPTY) {
+                        hash ^= zobrist[p_board[sq]-1][sq];
+                }
+        }
+        return hash ^ WTM;
+}
+
 
 static int p_evaluate(byte* p_board)
 {
@@ -2923,15 +2938,15 @@ fprintf(stderr, "Failing high in proceed of  vsearch.\n");
         while (move_sp > moves) {
                 int newdepth;
                 int move;
-		byte* p_board=board;
-		/*	byte* p_board=(byte*) malloc(67*sizeof(byte));
+		
+		byte* p_board=(byte*) malloc(67*sizeof(byte));
 		int j=0;
 
 		
 		for (j=0; j<67; j++){
 		  p_board[j]=board[j];
-		  p_board[j]=0;
-		  }*/
+		}
+		
 
 		fprintf(stderr, "in parallel while of vsearch.\n");
 		
@@ -2950,8 +2965,8 @@ fprintf(stderr, "Failing high in proceed of  vsearch.\n");
 		  /*TEMP this should be a deep copy of board*/
                         p_unmake_move(p_board);
 
-			/*TEMP should free
-			  free(p_board);*/
+		
+			free(p_board);	  
                         continue;
                 }
 
@@ -2959,8 +2974,11 @@ fprintf(stderr, "Failing high in proceed of  vsearch.\n");
                 if (newdepth <= 0) {
 
 		  /*TEMP this should be a deep copy of board*/
+		  fprintf(stderr, "doing qsearch in vsearch.\n");
 		  score = -p_qsearch(-beta, -alpha, p_board);
                 } else {
+
+		  fprintf(stderr, "doing child search after vsearch.\n");
 		  /*TEMP this should be deep copy of p_board*/
 		  score = -p_child_search(newdepth, -beta, -alpha, p_board);
                 }
@@ -2971,8 +2989,8 @@ fprintf(stderr, "Failing high in proceed of  vsearch.\n");
                 p_unmake_move(p_board);
 		
 
-		/*TEMP should free
-		  free(p_board);*/
+		free(p_board);
+		  
                 if (score <= best_score) continue;
                 best_score = score;
                 best_move = move;
@@ -3016,185 +3034,213 @@ fprintf(stderr, "Failing high in proceed of  vsearch.\n");
 }
 
 
+void array_compare(byte* arr1, byte* arr2, int len, char* message){
+  int proceed=1;
+  int j=0;
+  while ((j<len) && proceed){
+    if (arr1[j]!=arr2[j]){
+	proceed=0;
+	fprintf(stderr, "found a discrepancy at %s\n", message);
+      }
+    j++;
+
+  }
+
+}
 
 static int p_root_search(int maxdepth)
 {
-        int             depth;
-        int             score, best_score;
-        int             move = 0;
-        int             alpha, beta;
-        unsigned long   node;
-        struct move     *m;
+  int             depth;
+  int             score, best_score;
+  int             move = 0;
+  int             alpha, beta;
+  unsigned long   node;
+  struct move     *m;
+  
+  
+  nodes = 0;
+  compute_piece_square_tables();
+  
+  generate_moves(0);
+  qsort(move_stack, move_sp-move_stack, sizeof(struct move), cmp_move);
+  
+  alpha = -INF;
+  beta = +INF;
+  puts(" nodes ply score move");
+  
+  
+  
+  
+  
+  
+  for (depth = 1; depth <= maxdepth; depth++) {
+    int proceed=1;
+    fprintf(stderr, "increasing depth to %d\n", depth);
+    m = move_stack;
+    best_score = INT_MIN;
+    
+    node = nodes;
+    
+    
+    /*in parallel version the first iteration works different than subsequent iterations.*/
+    while (m < move_sp && proceed) {
+      fprintf(stderr, "In while proceed %d\n", depth);
+      /*go into move, check if legal;*/
+      make_move(m->move);
+      compute_attacks();
+      if (friend->attack[enemy->king] != 0) { /* illegal? */
+	fprintf(stderr, "Passed friend-enemy check\n");
+	unmake_move();
+	*m = *--move_sp; /* drop this move */
+	continue;
+      }
+      
+      
+      /*			 SIMPLE No hash stack
+      //don't know what this is anyway*/
+      hash_stack[ply] = compute_hash();
+      
+      
+      /*do normal search. Or if end of depth, Q-Search*/
+      if (depth-1 > 0) {
+	fprintf(stderr,"succeeded if-check\n");
+	/*TEMP change*/
+	score = -p_vsearch(depth-1, -beta, -alpha);
+      } else {
+	fprintf(stderr,"failed if-check, depth was %d\n", depth);
+	score = -qsearch(-beta, -alpha);
+      }
+      unmake_move();
+      
+      
+      /*Fix window if it was too narrow.*/
+      if (score>=beta || (score<=alpha && m==move_stack)) {
+	alpha = -INF;
+	beta = +INF;
+	continue; /* re-search this move */
+      }
+      
+      /*I don't know what this is*/
+      m->prescore = ~squeeze(nodes-node);
+      node = nodes;
+      
+      
+      if (score > best_score) {
+	struct move tmp;
 	
-
-        nodes = 0;
-        compute_piece_square_tables();
-
-        generate_moves(0);
-        qsort(move_stack, move_sp-move_stack, sizeof(struct move), cmp_move);
-
-        alpha = -INF;
-        beta = +INF;
-        puts(" nodes ply score move");
-
-
-
-
-
+	best_score = score;
+	alpha = score;
+	beta = score + 1;
+	move = m->move;
 	
-        for (depth = 1; depth <= maxdepth; depth++) {
-	  int proceed=1;
-	  fprintf(stderr, "increasing depth to %d\n", depth);
-	  m = move_stack;
-                best_score = INT_MIN;
+	tmp = *move_stack; /* swap with top of list */
+	*move_stack = *m;
+	*m = tmp;
+      }
+      m++; /* continue with next move */
+      proceed=0;		
+    }
+    
+    
+    parallel_code=1;
+    for (;m < move_sp;) {
+      /*      byte*p_board=board;*/
 
-                node = nodes;
+            int j=0;
+      byte* p_board=(byte*) malloc(67*sizeof(byte));
+      for (j=0;j<67; j++){
+	p_board[j]=board[j];
 
+	}
 
-		/*in parallel version the first iteration works different than subsequent iterations.*/
-	while (m < move_sp && proceed) {
-	  fprintf(stderr, "In while proceed %d\n", depth);
-		  /*go into move, check if legal;*/
-                        make_move(m->move);
-                        compute_attacks();
-                        if (friend->attack[enemy->king] != 0) { /* illegal? */
-			  fprintf(stderr, "Passed friend-enemy check\n");
-                                unmake_move();
-                                *m = *--move_sp; /* drop this move */
-                                continue;
-                        }
+      array_compare(p_board, board, 67, "just after creation.");
+      /*go into move, check if legal;*/
+      
+      /*TEMP this should be a deep copy of board*/
+      p_make_move(m->move, p_board);
+      
+      /*TEMP this needs to be a deep copy of board.*/
+      p_compute_attacks(p_board);
+      if (friend->attack[enemy->king] != 0) { /* illegal? */
+	
+	/*TEMP this needs to be a deep copy of board.*/
+	p_unmake_move(p_board);
+	array_compare(p_board, board, 67, "after first unmake.");
+	*m = *--move_sp; /* drop this move */
+	free(p_board);
+	
+	continue;
+      }
+      
+      
+      /*			 SIMPLE No hash stack
+      //don't know what this is anyway*/
+      hash_stack[ply] = p_compute_hash(p_board);
+      
+      
+      /*do normal search. Or if end of depth, Q-Search*/
+      if (depth-1 > 0) {
+	
+	/*TEMP  This needs to be deep copy of board*/
+	score = -p_child_search(depth-1, -beta, -alpha, p_board);
+      } else {
+	
+	/*TEMP  This needs to be deep copy of board*/
+	score = -p_qsearch(-beta, -alpha, p_board);
+      }
+      
+      /*TEMP  This needs to be deep copy of board*/
+      p_unmake_move(p_board);
+      
+      array_compare(p_board, board, 67, "after second unmake.");
+      free(p_board);
+      /*Fix window if it was too narrow.*/
+      if (score>=beta || (score<=alpha && m==move_stack)) {
+	alpha = -INF;
+	beta = +INF;
+	
+	continue; /* re-search this move */
+      }
+      
+      /*I don't know what this is*/
+      m->prescore = ~squeeze(nodes-node);
+      node = nodes;
+      
+      
+      if (score > best_score) {
+	struct move tmp;
+	
+	best_score = score;
+	alpha = score;
+	beta = score + 1;
+	move = m->move;
+	
+	tmp = *move_stack; /* swap with top of list */
+	*move_stack = *m;
+	*m = tmp;
+      }
 
-
-			/*			 SIMPLE No hash stack
-			//don't know what this is anyway*/
-			   hash_stack[ply] = compute_hash();
-			
-
-			/*do normal search. Or if end of depth, Q-Search*/
-                        if (depth-1 > 0) {
-			  fprintf(stderr,"succeeded if-check\n");
-			  /*TEMP change*/
-                                score = -p_vsearch(depth-1, -beta, -alpha);
-                        } else {
-			  fprintf(stderr,"failed if-check, depth was %d\n", depth);
-                                score = -qsearch(-beta, -alpha);
-                        }
-                        unmake_move();
-
-
-			/*Fix window if it was too narrow.*/
-                        if (score>=beta || (score<=alpha && m==move_stack)) {
-                                alpha = -INF;
-                                beta = +INF;
-                                continue; /* re-search this move */
-                        }
-			
-			/*I don't know what this is*/
-                        m->prescore = ~squeeze(nodes-node);
-                        node = nodes;
-
-
-                        if (score > best_score) {
-                                struct move tmp;
-
-                                best_score = score;
-                                alpha = score;
-                                beta = score + 1;
-                                move = m->move;
-
-                                tmp = *move_stack; /* swap with top of list */
-                                *move_stack = *m;
-                                *m = tmp;
-                        }
-			m++; /* continue with next move */
-			proceed=0;
-                }
-		
-
-	parallel_code=1;
-	for (;m < move_sp;) {
-	  byte* p_board=board;
-		  /*go into move, check if legal;*/
-	  
-	  /*TEMP this should be a deep copy of board*/
-p_make_move(m->move, board);
-
-			/*TEMP this needs to be a deep copy of board.*/
-                        p_compute_attacks(p_board);
-                        if (friend->attack[enemy->king] != 0) { /* illegal? */
-                                
-/*TEMP this needs to be a deep copy of board.*/
-			  p_unmake_move(p_board);
-                                *m = *--move_sp; /* drop this move */
-                                continue;
-                        }
-
-
-			/*			 SIMPLE No hash stack
-			//don't know what this is anyway*/
-			   hash_stack[ply] = compute_hash();
-			
-
-			/*do normal search. Or if end of depth, Q-Search*/
-                        if (depth-1 > 0) {
-
-			  /*TEMP  This needs to be deep copy of board*/
-			  score = -p_child_search(depth-1, -beta, -alpha, p_board);
-                        } else {
-
-			  /*TEMP  This needs to be deep copy of board*/
-			  score = -p_qsearch(-beta, -alpha, p_board);
-                        }
-
-/*TEMP  This needs to be deep copy of board*/
-                        p_unmake_move(p_board);
-
-
-			/*Fix window if it was too narrow.*/
-                        if (score>=beta || (score<=alpha && m==move_stack)) {
-                                alpha = -INF;
-                                beta = +INF;
-                                continue; /* re-search this move */
-                        }
-			
-			/*I don't know what this is*/
-                        m->prescore = ~squeeze(nodes-node);
-                        node = nodes;
-
-
-                        if (score > best_score) {
-                                struct move tmp;
-
-                                best_score = score;
-                                alpha = score;
-                                beta = score + 1;
-                                move = m->move;
-
-                                tmp = *move_stack; /* swap with top of list */
-                                *move_stack = *m;
-                                *m = tmp;
-                        }
-			m++; /* continue with next move */
-                }
-	parallel_code=0;
-
-                if (move_sp-move_stack <= 1) {
-                        break; /* just one move to play */
-                }
-
-                printf(" %5lu %3d %+1.2f ", nodes, depth, best_score / 100.0);
-                print_move_san(move);
-                puts("");
-
-                /* sort remaining moves in descending order of subtree size */
-                qsort(move_stack+1, move_sp-move_stack-1, sizeof(*m), cmp_move);
-
-		/*Widen window for deeper search*/
-                alpha = best_score - 33;        /* aspiration window */
-                beta = best_score + 33;
-        }
-        move_sp = move_stack;
-        return move;
+      m++; /* continue with next move */
+    }
+    parallel_code=0;
+    
+    if (move_sp-move_stack <= 1) {
+      break; /* just one move to play */
+    }
+    
+    printf(" %5lu %3d %+1.2f ", nodes, depth, best_score / 100.0);
+    print_move_san(move);
+    puts("");
+    
+    /* sort remaining moves in descending order of subtree size */
+    qsort(move_stack+1, move_sp-move_stack-1, sizeof(*m), cmp_move);
+    
+    /*Widen window for deeper search*/
+    alpha = best_score - 33;        /* aspiration window */
+    beta = best_score + 33;
+  }
+  move_sp = move_stack;
+  return move;
 }
 
 
