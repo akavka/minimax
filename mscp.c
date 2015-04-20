@@ -1791,8 +1791,8 @@ static int root_search(int maxdepth)
 
 
 			/*			 SIMPLE No hash stack
-			//don't know what this is anyway*/
-			   hash_stack[ply] = compute_hash();
+			//don't know what this is anyway
+			hash_stack[ply] = compute_hash();*/
 			
 
 			/*do normal search. Or if end of depth, Q-Search*/
@@ -3097,8 +3097,8 @@ static int p_root_search(int maxdepth)
       
       
       /*			 SIMPLE No hash stack
-      //don't know what this is anyway*/
-      hash_stack[ply] = compute_hash();
+      //don't know what this is anyway
+      hash_stack[ply] = compute_hash();*/
       
       
       /*do normal search. Or if end of depth, Q-Search*/
@@ -3174,8 +3174,8 @@ static int p_root_search(int maxdepth)
       
       
       /*			 SIMPLE No hash stack
-      //don't know what this is anyway*/
-      hash_stack[ply] = p_compute_hash(p_board);
+      //don't know what this is anyway
+      hash_stack[ply] = p_compute_hash(p_board);*/
       
       
       /*do normal search. Or if end of depth, Q-Search*/
