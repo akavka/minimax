@@ -26,7 +26,7 @@ char mscp_c_rcsid[] = "@(#)$Id: mscp.c,v 1.18 2003/12/14 15:12:12 marcelk Exp $"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-
+#include "cycle_timer.h"
 
 typedef unsigned char byte;
 #define INF 32000
@@ -115,6 +115,15 @@ static unsigned long zobrist[12][64];   /* Hash-key construction */
 #define CORE (2048)
 static long booksize;                   /* Number of opening book entries */
 
+typedef struct node {
+  struct side white;
+  struct side black;
+  struct side *enemy, *friend;
+  int ply;
+  
+}node;
+
+
 /* Transposition table and opening book share the same memory */
 static union {
         struct tt {                     /* Transposition table entry */
@@ -166,6 +175,8 @@ enum { RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8 };
 #define MOVE(fr,to)             (((fr) << 6) | (to))    /* compose move */
 #define FR(move)                (((move) & 07700) >> 6) /* from square */
 #define TO(move)                ((move) & 00077)        /* target square */
+/*SIMPLE I added this*/
+#define PWTM(ply)               (~ply & 1)              /* WTM with argument*/
 #define SPECIAL                 (1<<12)                 /* for special moves */
 
 struct command {
