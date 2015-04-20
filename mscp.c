@@ -26,7 +26,7 @@ char mscp_c_rcsid[] = "@(#)$Id: mscp.c,v 1.18 2003/12/14 15:12:12 marcelk Exp $"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include "cycle_timer.h"
+/*#include "cycle_timer.h"*/
 
 typedef unsigned char byte;
 #define INF 32000
@@ -115,13 +115,15 @@ static unsigned long zobrist[12][64];   /* Hash-key construction */
 #define CORE (2048)
 static long booksize;                   /* Number of opening book entries */
 
-typedef struct node {
+typedef struct ball {
   struct side white;
   struct side black;
   struct side *enemy, *friend;
   int ply;
-  
-}node;
+  unsigned short caps;
+  struct move *move_sp;
+  signed char *undo_sp;
+}ball;
 
 
 /* Transposition table and opening book share the same memory */
@@ -2656,6 +2658,30 @@ static int p_evaluate(byte* p_board)
         return WTM ? score : -score;
 }
 
+static ball setup(struct side * arg_white, struct side* arg_black, struct side* arg_friend, struct side* arg_enemy, int arg_ply, unsigned short arg_caps){
+  ball result;
+  result.white=(*arg_white);
+  result.black=(*arg_black);
+  result.ply=arg_ply;
+  result.caps=arg_caps;
+
+  if(arg_black==arg_friend &&arg_white==arg_enemy){
+    fprintf(stderr, "Black was friend.\n");
+    result.enemy=&(result.white);
+    result.friend=&(result.black);
+  }
+  else if(arg_white==arg_friend &&arg_black==arg_enemy){
+    fprintf(stderr, "White was friend.\n");
+    result.enemy=&(result.black);
+    result.friend=&(result.white);
+  }
+  else{
+    fprintf(stderr, "ERROR: b/w friend enemy pointers are messed up.\n");
+  } 
+
+  return result;
+}
+
 
 static int p_qsearch(int alpha, int beta, byte* p_board)
 {
@@ -2937,7 +2963,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 
                 move_sp = moves; /* fail high: skip remaining moves */
 		
-fprintf(stderr, "Failing high in proceed of  vsearch.\n");
+		fprintf(stderr, "Failing high in proceed of  vsearch.\n");
         }
 
 
@@ -2989,7 +3015,9 @@ fprintf(stderr, "Failing high in proceed of  vsearch.\n");
 		  score = -p_qsearch(-beta, -alpha, p_board);
                 } else {
 
-		  fprintf(stderr, "doing child search after vsearch.\n");
+		  ball my_ball=setup(&white, &black, friend, enemy, ply, caps);
+		  
+		  fprintf(stderr, "doing child search after vsearch. Caps %d.\n", my_ball.caps);
 		  /*TEMP this should be deep copy of p_board*/
 		  score = -p_child_search(newdepth, -beta, -alpha, p_board);
                 }
@@ -3285,7 +3313,7 @@ int main(int argc, char *argv[])
 	clock_t start, end;
 	FILE*write_time;
 	write_time=fopen("time.dat", "w");
-	
+	fprintf(stderr, "Started.\n");
 
         puts(startup_message);
         signal(SIGINT, catch_sigint);
