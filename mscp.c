@@ -2824,6 +2824,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 	int                             proceed=1;
 
 
+	fprintf(stderr,"Starting vsearch\n");
         /*SIMPLE we cut these variables when we don't use the hash table
        
 	struct tt                       *tt;
@@ -2876,8 +2877,10 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 	/*recursively call this function*/
         while (proceed && (move_sp > moves)) {
+		
                 int newdepth;
                 int move;
+		fprintf(stderr, "in proceed while of vsearch.\n");
                 move_sp--;
                 move = move_sp->move;
                 make_move(move);
@@ -2894,7 +2897,7 @@ static int p_vsearch(int depth, int alpha, int beta)
                         score = -p_vsearch(newdepth, -beta, -alpha);
                 }
                 if (score < -29000) score++;    /* adjust for mate-in-n */
-
+		proceed=0;
                 unmake_move();
 
                 if (score <= best_score) continue;
@@ -2907,7 +2910,8 @@ static int p_vsearch(int depth, int alpha, int beta)
                 if (score < beta) continue;
 
                 move_sp = moves; /* fail high: skip remaining moves */
-		proceed=0;
+		
+fprintf(stderr, "Failing high in proceed of  vsearch.\n");
         }
 
 
@@ -2920,6 +2924,17 @@ static int p_vsearch(int depth, int alpha, int beta)
                 int newdepth;
                 int move;
 		byte* p_board=board;
+		/*	byte* p_board=(byte*) malloc(67*sizeof(byte));
+		int j=0;
+
+		
+		for (j=0; j<67; j++){
+		  p_board[j]=board[j];
+		  p_board[j]=0;
+		  }*/
+
+		fprintf(stderr, "in parallel while of vsearch.\n");
+		
                 move_sp--;
                 move = move_sp->move;
 
@@ -2934,6 +2949,9 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 		  /*TEMP this should be a deep copy of board*/
                         p_unmake_move(p_board);
+
+			/*TEMP should free
+			  free(p_board);*/
                         continue;
                 }
 
@@ -2951,7 +2969,10 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 		  /*TEMP this should be a deep copy of board*/
                 p_unmake_move(p_board);
+		
 
+		/*TEMP should free
+		  free(p_board);*/
                 if (score <= best_score) continue;
                 best_score = score;
                 best_move = move;
@@ -3004,7 +3025,7 @@ static int p_root_search(int maxdepth)
         int             alpha, beta;
         unsigned long   node;
         struct move     *m;
-	int proceed=1;
+	
 
         nodes = 0;
         compute_piece_square_tables();
@@ -3022,7 +3043,9 @@ static int p_root_search(int maxdepth)
 
 	
         for (depth = 1; depth <= maxdepth; depth++) {
-                m = move_stack;
+	  int proceed=1;
+	  fprintf(stderr, "increasing depth to %d\n", depth);
+	  m = move_stack;
                 best_score = INT_MIN;
 
                 node = nodes;
@@ -3030,11 +3053,12 @@ static int p_root_search(int maxdepth)
 
 		/*in parallel version the first iteration works different than subsequent iterations.*/
 	while (m < move_sp && proceed) {
-
+	  fprintf(stderr, "In while proceed %d\n", depth);
 		  /*go into move, check if legal;*/
                         make_move(m->move);
                         compute_attacks();
                         if (friend->attack[enemy->king] != 0) { /* illegal? */
+			  fprintf(stderr, "Passed friend-enemy check\n");
                                 unmake_move();
                                 *m = *--move_sp; /* drop this move */
                                 continue;
@@ -3048,10 +3072,11 @@ static int p_root_search(int maxdepth)
 
 			/*do normal search. Or if end of depth, Q-Search*/
                         if (depth-1 > 0) {
-
+			  fprintf(stderr,"succeeded if-check\n");
 			  /*TEMP change*/
                                 score = -p_vsearch(depth-1, -beta, -alpha);
                         } else {
+			  fprintf(stderr,"failed if-check, depth was %d\n", depth);
                                 score = -qsearch(-beta, -alpha);
                         }
                         unmake_move();
