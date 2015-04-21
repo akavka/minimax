@@ -2695,7 +2695,7 @@ static ball setup(struct side * arg_white, struct side* arg_black, struct side* 
 }
 
 
-static int p_qsearch(int alpha, int beta, byte* p_board, ball arg_ball)
+static int p_qsearch(int alpha, int beta, byte* p_board)
 {
   fprintf(stderr,"Made it to 10 before error.\n");
         int                             best_score;
@@ -2729,7 +2729,7 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball arg_ball)
                         continue;
                 }
 
-                score = - p_qsearch(-beta, -alpha, p_board, arg_ball);
+                score = - p_qsearch(-beta, -alpha, p_board);
 
                 p_unmake_move(p_board, arg_ball);
 
@@ -2754,7 +2754,7 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball arg_ball)
 
 
 
-static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball arg_ball)
+static int p_child_search(int depth, int alpha, int beta, byte* p_board)
 {
   fprintf(stderr,"Made it to 11 before error.\n");
         int                             best_score = -INF;
@@ -2828,11 +2828,11 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball ar
                 newdepth = incheck ? depth : depth-1;
                 if (newdepth <= 0) {
 		  /*TEMP should be deep copy of p_board? or not parallelized?*/
-		  score = -p_qsearch(-beta, -alpha, p_board, arg_ball);
+		  score = -p_qsearch(-beta, -alpha, p_board);
                 } else {
 
 		  /*TEMP should be deep copy of p_board or note parallelized?*/
-		  score = -p_child_search(newdepth, -beta, -alpha, p_board, arg_ball);
+		  score = -p_child_search(newdepth, -beta, -alpha, p_board);
                 }
                 if (score < -29000) score++;    /* adjust for mate-in-n */
 
@@ -3025,14 +3025,14 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 		  /*TEMP this should be a deep copy of board*/
 
+
 		  score = -p_qsearch(-beta, -alpha, p_board, arg_ball);
                 } else {
 
 
-		  
-		  
+		  fprintf(stderr, "doing child search after vsearch. Caps %d.\n", my_ball.caps);
 		  /*TEMP this should be deep copy of p_board*/
-		  score = -p_child_search(newdepth, -beta, -alpha, p_board, arg_ball);
+		  score = -p_child_search(newdepth, -beta, -alpha, p_board);
                 }
                 if (score < -29000) score++;    /* adjust for mate-in-n */
 
@@ -3237,12 +3237,13 @@ static int p_root_search(int maxdepth)
 	
 	/*TEMP  This needs to be deep copy of board*/
 
+
 	score = -p_child_search(depth-1, -beta, -alpha, p_board, arg_ball);
       } else {
 	
 
 	/*TEMP  This needs to be deep copy of board*/
-	score = -p_qsearch(-beta, -alpha, p_board, arg_ball);
+	score = -p_qsearch(-beta, -alpha, p_board);
       }
       
       /*TEMP  This needs to be deep copy of board*/
