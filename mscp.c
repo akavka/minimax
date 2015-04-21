@@ -3026,6 +3026,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		  /*TEMP this should be a deep copy of board*/
 
 
+
 		  score = -p_qsearch(-beta, -alpha, p_board, arg_ball);
                 } else {
 
@@ -3236,6 +3237,7 @@ static int p_root_search(int maxdepth)
       if (depth-1 > 0) {
 	
 	/*TEMP  This needs to be deep copy of board*/
+
 
 
 	score = -p_child_search(depth-1, -beta, -alpha, p_board, arg_ball);
