@@ -2070,13 +2070,13 @@ static void p_compute_attacks(byte* p_board, ball*arg_ball)
         int sq, to, pc;
         byte dir, dirs;
 
-        memset(&(white), 0, sizeof white);
-        memset(&black, 0, sizeof black);
+        memset(&(arg_ball->white), 0, sizeof arg_ball->white);
+        memset(&(arg_ball->black), 0, sizeof (arg_ball->black));
 
 	fprintf(stderr, "About to assign friend and foe\n");
 
-        arg_ball->friend = WTM ? &(white) : &black;
-        arg_ball->enemy = WTM ? &black : &(white);
+        arg_ball->friend = WTM ? &(arg_ball->white) : &(arg_ball->black);
+        arg_ball->enemy = WTM ? &(arg_ball->black) : &(arg_ball->white);
 
 	fprintf(stderr, "Just assigned friend and foe\n");
 
@@ -2087,50 +2087,50 @@ static void p_compute_attacks(byte* p_board, ball*arg_ball)
                 switch (pc) {
                 case WHITE_KING:
                         dir = 0;
-                        white.king = sq;
+                        arg_ball->white.king = sq;
                         dirs = king_dirs[sq];
                         do {
                                 dir -= dirs;
                                 dir &= dirs;
                                 to = sq + king_step[dir];
-                                white.attack[to] += 1;
+                                arg_ball->white.attack[to] += 1;
                         } while (dirs -= dir);
                         break;
 
                 case BLACK_KING:
                         dir = 0;
-                        black.king = sq;
+                        (arg_ball->black).king = sq;
                         dirs = king_dirs[sq];
                         do {
                                 dir -= dirs;
                                 dir &= dirs;
                                 to = sq + king_step[dir];
-                                black.attack[to] += 1;
+                                (arg_ball->black).attack[to] += 1;
                         } while (dirs -= dir);
                         break;
 
                 case WHITE_QUEEN:
-		  p_atk_slide(sq, ATK_SLIDER, &white, p_board, arg_ball);
+		  p_atk_slide(sq, ATK_SLIDER, &arg_ball->white, p_board, arg_ball);
                         break;
 
                 case BLACK_QUEEN:
-		  p_atk_slide(sq, ATK_SLIDER, &black, p_board, arg_ball);
+		  p_atk_slide(sq, ATK_SLIDER, &(arg_ball->black), p_board, arg_ball);
                         break;
 
                 case WHITE_ROOK:
-		  p_atk_slide(sq, ATK_ORTHOGONAL, &white, p_board, arg_ball);
+		  p_atk_slide(sq, ATK_ORTHOGONAL, &arg_ball->white, p_board, arg_ball);
                         break;
 
                 case BLACK_ROOK:
-		  p_atk_slide(sq, ATK_ORTHOGONAL, &black, p_board, arg_ball);
+		  p_atk_slide(sq, ATK_ORTHOGONAL, &(arg_ball->black), p_board, arg_ball);
                         break;
 
                 case WHITE_BISHOP:
-		  p_atk_slide(sq, ATK_DIAGONAL, &white, p_board, arg_ball);
+		  p_atk_slide(sq, ATK_DIAGONAL, &arg_ball->white, p_board, arg_ball);
                         break;
 
                 case BLACK_BISHOP:
-		  p_atk_slide(sq, ATK_DIAGONAL, &black, p_board, arg_ball);
+		  p_atk_slide(sq, ATK_DIAGONAL, &(arg_ball->black), p_board, arg_ball);
                         break;
 
                 case WHITE_KNIGHT:
@@ -2140,7 +2140,7 @@ static void p_compute_attacks(byte* p_board, ball*arg_ball)
                                 dir -= dirs;
                                 dir &= dirs;
                                 to = sq + knight_jump[dir];
-                                white.attack[to] += 1;
+                                arg_ball->white.attack[to] += 1;
                         } while (dirs -= dir);
                         break;
 
@@ -2151,27 +2151,27 @@ static void p_compute_attacks(byte* p_board, ball*arg_ball)
                                 dir -= dirs;
                                 dir &= dirs;
                                 to = sq + knight_jump[dir];
-                                black.attack[to] += 1;
+                                (arg_ball->black).attack[to] += 1;
                         } while (dirs -= dir);
                         break;
 
                 case WHITE_PAWN:
-                        white.pawns[1+F(sq)] += 1;
+                        arg_ball->white.pawns[1+F(sq)] += 1;
                         if (F(sq) != FILE_H) {
-                                white.attack[sq + DIR_N + DIR_E] += 1;
+                                arg_ball->white.attack[sq + DIR_N + DIR_E] += 1;
                         }
                         if (F(sq) != FILE_A) {
-                                white.attack[sq + DIR_N - DIR_E] += 1;
+                                arg_ball->white.attack[sq + DIR_N - DIR_E] += 1;
                         }
                         break;
 
                 case BLACK_PAWN:
-                        black.pawns[1+F(sq)] += 1;
+                        (arg_ball->black).pawns[1+F(sq)] += 1;
                         if (F(sq) != FILE_H) {
-                                black.attack[sq - DIR_N + DIR_E] += 1;
+                                (arg_ball->black).attack[sq - DIR_N + DIR_E] += 1;
                         }
                         if (F(sq) != FILE_A) {
-                                black.attack[sq - DIR_N - DIR_E] += 1;
+                                (arg_ball->black).attack[sq - DIR_N - DIR_E] += 1;
                         }
                         break;
                 }
@@ -2301,11 +2301,11 @@ static int p_push_move(int fr, int to, byte* p_board, ball *arg_ball)
 
         /* does the destination square look safe? */
         if (WTM) {
-                if (black.attack[to] != 0) { /* defended */
+                if ((arg_ball->black).attack[to] != 0) { /* defended */
                         prescore -= prescore_piece_value[p_board[fr]];
                 }
         } else {
-                if (white.attack[to] != 0) { /* defended */
+                if (arg_ball->white.attack[to] != 0) { /* defended */
                         prescore -= prescore_piece_value[p_board[fr]];
                 }
         }
@@ -2466,7 +2466,7 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
                                 to += DIR_N;
                                 if (p_board[to] == EMPTY) {
 				  if (p_push_move(fr, to,p_board, arg_ball))
-                                        if (black.attack[to-DIR_N]) {
+                                        if ((arg_ball->black).attack[to-DIR_N]) {
                                                 move_sp[-1].move |= SPECIAL;
                                         }
                                 }
@@ -2495,7 +2495,7 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
                                 to -= DIR_N;
                                 if (p_board[to] == EMPTY) {
 				  if (p_push_move(fr, to, p_board, arg_ball))
-                                        if (white.attack[to+DIR_N]) {
+                                        if (arg_ball->white.attack[to+DIR_N]) {
                                                 move_sp[-1].move |= SPECIAL;
                                         }
                                 }
@@ -2599,38 +2599,38 @@ static int p_evaluate(byte* p_board, ball*arg_ball)
                 case WHITE_PAWN:
                 {
                         int missing;
-                        if (white.pawns[file] > 1) {
+                        if (arg_ball->white.pawns[file] > 1) {
                                 score -= 15;
                         }
-                        missing = !white.pawns[file-1] + !white.pawns[file+1] +
-                                !black.pawns[file];
+                        missing = !arg_ball->white.pawns[file-1] + !arg_ball->white.pawns[file+1] +
+                                !(arg_ball->black).pawns[file];
                         score -= missing * missing * 5;
                         break;
                 }
                 case BLACK_PAWN:
                 {
                         int missing;
-                        if (black.pawns[file] > 1) {
+                        if ((arg_ball->black).pawns[file] > 1) {
                                 score += 15;
                         }
-                        missing = !black.pawns[file-1] + !black.pawns[file+1] +
-                                !white.pawns[file];
+                        missing = !(arg_ball->black).pawns[file-1] + !(arg_ball->black).pawns[file+1] +
+                                !arg_ball->white.pawns[file];
                         score += missing * missing * 5;
                         break;
                 }
                 case WHITE_ROOK:
-                        if (!white.pawns[file]) {
+                        if (!arg_ball->white.pawns[file]) {
                                 score += 10;
-                                if (!black.pawns[file]) {
+                                if (!(arg_ball->black).pawns[file]) {
                                         score += 10;
                                 }
                         }
                         break;
 
                 case BLACK_ROOK:
-                        if (!black.pawns[file]) {
+                        if (!(arg_ball->black).pawns[file]) {
                                 score -= 10;
-                                if (!white.pawns[file]) {
+                                if (!arg_ball->white.pawns[file]) {
                                         score -= 10;
                                 }
                         }
@@ -2647,10 +2647,10 @@ static int p_evaluate(byte* p_board, ball*arg_ball)
         white_has = 0;
         black_has = 0;
         for (sq=0; sq<64; sq++) {
-                if (white.attack[sq] > black.attack[sq]) {
+                if (arg_ball->white.attack[sq] > (arg_ball->black).attack[sq]) {
                         white_has += white_control[sq];
                 }
-                if (white.attack[sq] < black.attack[sq]) {
+                if (arg_ball->white.attack[sq] < (arg_ball->black).attack[sq]) {
                         black_has += white_control[FLIP(sq)];
                 }
         }
