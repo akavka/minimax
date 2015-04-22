@@ -2047,7 +2047,7 @@ struct command mscp_commands[] = {
 Here begins Adam's parallel functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
-static void p_atk_slide(int sq, byte dirs, struct side *s, byte* p_board, ball arg_ball)
+static void p_atk_slide(int sq, byte dirs, struct side *s, byte* p_board, ball*arg_ball)
 {
         byte dir = 0;
         int to;
@@ -2065,16 +2065,20 @@ static void p_atk_slide(int sq, byte dirs, struct side *s, byte* p_board, ball a
 }
 
 
-static void p_compute_attacks(byte* p_board, ball arg_ball)
+static void p_compute_attacks(byte* p_board, ball*arg_ball)
 {
         int sq, to, pc;
         byte dir, dirs;
 
-        memset(&white, 0, sizeof white);
+        memset(&(white), 0, sizeof white);
         memset(&black, 0, sizeof black);
 
-        friend = WTM ? &white : &black;
-        enemy = WTM ? &black : &white;
+	fprintf(stderr, "About to assign friend and foe\n");
+
+        friend = WTM ? &(white) : &black;
+        enemy = WTM ? &black : &(white);
+
+	fprintf(stderr, "Just assigned friend and foe\n");
 
         for (sq=0; sq<64; sq++) {
                 pc = p_board[sq];
@@ -2174,7 +2178,7 @@ static void p_compute_attacks(byte* p_board, ball arg_ball)
         }
 }
 
-static void p_unmake_move(byte* p_board, ball arg_ball)
+static void p_unmake_move(byte* p_board, ball*arg_ball)
 {
         int sq;
 
@@ -2187,7 +2191,7 @@ static void p_unmake_move(byte* p_board, ball arg_ball)
 }
 
 
-static void p_make_move(int move, byte* p_board, ball arg_ball)
+static void p_make_move(int move, byte* p_board, ball *arg_ball)
 {
         int fr;
         int to;
@@ -2285,7 +2289,7 @@ static void p_make_move(int move, byte* p_board, ball arg_ball)
         }
 }
 
-static int p_push_move(int fr, int to, byte* p_board, ball arg_ball)
+static int p_push_move(int fr, int to, byte* p_board, ball *arg_ball)
 {
         unsigned short prescore = PRESCORE_EQUAL;
         int move;
@@ -2330,7 +2334,7 @@ static void p_push_special_move(int fr, int to)
         move_sp++;
 }
 
-static void p_push_pawn_move(int fr, int to, byte* p_board, ball arg_ball)
+static void p_push_pawn_move(int fr, int to, byte* p_board, ball*arg_ball)
 {
         if ((R(to) == RANK_8) || (R(to) == RANK_1)) {
                 p_push_special_move(fr, to);          /* queen promotion */
@@ -2346,7 +2350,7 @@ static void p_push_pawn_move(int fr, int to, byte* p_board, ball arg_ball)
 }
 
 
-static void p_gen_slides(int fr, byte dirs, byte*p_board, ball arg_ball)
+static void p_gen_slides(int fr, byte dirs, byte*p_board, ball *arg_ball)
 {
         int vector;
         int to;
@@ -2372,7 +2376,7 @@ static void p_gen_slides(int fr, byte dirs, byte*p_board, ball arg_ball)
 }
 
 
-static int p_test_illegal(int move, byte* p_board, ball arg_ball)
+static int p_test_illegal(int move, byte* p_board, ball*arg_ball)
 {
   p_make_move(move, p_board, arg_ball);
         p_compute_attacks(p_board, arg_ball);
@@ -2381,7 +2385,7 @@ static int p_test_illegal(int move, byte* p_board, ball arg_ball)
 }
 
 
-static void p_generate_moves(unsigned treshold, byte*p_board, ball arg_ball)
+static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
 {
         int             fr, to;
         int             pc;
@@ -2560,7 +2564,7 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball arg_ball)
 
 /* Compute 32-bit Zobrist hash key. Normally 32 bits this is too small,
    but for MSCP's small searches it is OK */
-static unsigned long p_compute_hash(byte* p_board, ball arg_ball)
+static unsigned long p_compute_hash(byte* p_board, ball*arg_ball)
 {
         unsigned long hash = 0;
         int sq;
@@ -2574,7 +2578,7 @@ static unsigned long p_compute_hash(byte* p_board, ball arg_ball)
 }
 
 
-static int p_evaluate(byte* p_board, ball arg_ball)
+static int p_evaluate(byte* p_board, ball*arg_ball)
 {
         int sq;
         int score = 0;
@@ -2658,14 +2662,15 @@ static int p_evaluate(byte* p_board, ball arg_ball)
         return WTM ? score : -score;
 }
 
-static ball setup(struct side * arg_white, struct side* arg_black, struct side* arg_friend, struct side* arg_enemy, int arg_ply, unsigned short arg_caps){
-  ball result;
-  result.white=(*arg_white);
-  result.black=(*arg_black);
-  result.ply=arg_ply;
-  result.caps=arg_caps;
-
-  if(arg_black==arg_friend &&arg_white==arg_enemy){
+static ball* setup(struct side * arg_white, struct side* arg_black, struct side* arg_friend, struct side* arg_enemy, int arg_ply, unsigned short arg_caps){
+  ball*result=(ball*)malloc(sizeof(ball));
+  result->white=(*arg_white);
+  result->black=(*arg_black);
+  result->ply=arg_ply;
+  result->caps=arg_caps;
+  result->friend=arg_friend;
+  result->enemy=arg_enemy;
+  /*  if(arg_black==arg_friend &&arg_white==arg_enemy){
     fprintf(stderr, "Black was friend.\n");
     result.enemy=&(result.white);
     result.friend=&(result.black);
@@ -2677,13 +2682,13 @@ static ball setup(struct side * arg_white, struct side* arg_black, struct side* 
   }
   else{
     fprintf(stderr, "ERROR: b/w friend enemy pointers are messed up.\n");
-  } 
+    } */
 
   return result;
 }
 
 
-static int p_qsearch(int alpha, int beta, byte* p_board, ball arg_ball)
+static int p_qsearch(int alpha, int beta, byte* p_board, ball *arg_ball)
 {
         int                             best_score;
         int                             score;
@@ -2741,7 +2746,7 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball arg_ball)
 
 
 
-static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball arg_ball)
+static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*arg_ball)
 {
         int                             best_score = -INF;
         int                             best_move = 0;
@@ -2978,7 +2983,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		
 		byte* p_board=(byte*) malloc(67*sizeof(byte));
 		int j=0;
-		ball arg_ball=setup(&white, &black, friend, enemy, ply, caps);
+		ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps);
 		
 		for (j=0; j<67; j++){
 		  p_board[j]=board[j];
@@ -3184,7 +3189,7 @@ static int p_root_search(int maxdepth)
     parallel_code=1;
     for (;m < move_sp;) {
       /*      byte*p_board=board;*/
-ball arg_ball=setup(&white, &black, friend, enemy, ply, caps);
+      ball* arg_ball=setup(&white, &black, friend, enemy, ply, caps);
             int j=0;
       byte* p_board=(byte*) malloc(67*sizeof(byte));
       for (j=0;j<67; j++){
