@@ -2668,21 +2668,21 @@ static ball* setup(struct side * arg_white, struct side* arg_black, struct side*
   result->black=(*arg_black);
   result->ply=arg_ply;
   result->caps=arg_caps;
-  result->friend=arg_friend;
-  result->enemy=arg_enemy;
-  /*  if(arg_black==arg_friend &&arg_white==arg_enemy){
+  /*result->friend=arg_friend;
+    result->enemy=arg_enemy;*/
+    if(arg_black==arg_friend &&arg_white==arg_enemy){
     fprintf(stderr, "Black was friend.\n");
-    result.enemy=&(result.white);
-    result.friend=&(result.black);
+    result->enemy=&(result->white);
+    result->friend=&(result->black);
   }
   else if(arg_white==arg_friend &&arg_black==arg_enemy){
     fprintf(stderr, "White was friend.\n");
-    result.enemy=&(result.black);
-    result.friend=&(result.white);
+    result->enemy=&(result->black);
+    result->friend=&(result->white);
   }
   else{
     fprintf(stderr, "ERROR: b/w friend enemy pointers are messed up.\n");
-    } */
+    } 
 
   return result;
 }
