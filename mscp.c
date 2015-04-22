@@ -2075,7 +2075,7 @@ static void p_compute_attacks(byte* p_board, ball*arg_ball)
 
 	fprintf(stderr, "About to assign friend and foe\n");
 
-        friend = WTM ? &(white) : &black;
+        arg_ball->friend = WTM ? &(white) : &black;
         enemy = WTM ? &black : &(white);
 
 	fprintf(stderr, "Just assigned friend and foe\n");
@@ -2381,7 +2381,7 @@ static int p_test_illegal(int move, byte* p_board, ball*arg_ball)
   p_make_move(move, p_board, arg_ball);
         p_compute_attacks(p_board, arg_ball);
         p_unmake_move(p_board, arg_ball);
-        return friend->attack[enemy->king] != 0;
+        return arg_ball->friend->attack[enemy->king] != 0;
 }
 
 
@@ -2507,7 +2507,7 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
         /*
          *  generate castling moves
          */
-        if (p_board[CASTLE] && !enemy->attack[friend->king]) {
+        if (p_board[CASTLE] && !enemy->attack[arg_ball->friend->king]) {
                 if (WTM && (p_board[CASTLE] & CASTLE_WHITE_KING) &&
                         !p_board[F1] && !p_board[G1] &&
                         !enemy->attack[F1])
@@ -2716,7 +2716,7 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball *arg_ball)
                 p_make_move(move, p_board, arg_ball);
 
                 p_compute_attacks(p_board, arg_ball);
-                if (friend->attack[enemy->king]) {
+                if (arg_ball->friend->attack[enemy->king]) {
                         p_unmake_move(p_board, arg_ball);
                         continue;
                 }
@@ -2788,7 +2788,7 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
         }
 
         history[best_move] |= PRESCORE_HASHMOVE;*/
-        incheck = enemy->attack[friend->king];
+        incheck = enemy->attack[arg_ball->friend->king];
 
         /*
          *  p_generate moves
@@ -2811,7 +2811,7 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
                 move = move_sp->move;
                 p_make_move(move, p_board, arg_ball);
                 p_compute_attacks(p_board, arg_ball);
-                if (friend->attack[enemy->king]) {
+                if (arg_ball->friend->attack[enemy->king]) {
                         p_unmake_move(p_board, arg_ball);
                         continue;
                 }
@@ -3001,7 +3001,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 		/*TEMP this needs to be a deep copy of board*/
                 p_compute_attacks(p_board, arg_ball);
-                if (friend->attack[enemy->king]) {
+                if (arg_ball->friend->attack[enemy->king]) {
 
 
 		  /*TEMP this should be a deep copy of board*/
@@ -3205,7 +3205,7 @@ static int p_root_search(int maxdepth)
       
       /*TEMP this needs to be a deep copy of board.*/
       p_compute_attacks(p_board, arg_ball);
-      if (friend->attack[enemy->king] != 0) { /* illegal? */
+      if (arg_ball->friend->attack[enemy->king] != 0) { /* illegal? */
 	
 	/*TEMP this needs to be a deep copy of board.*/
 	p_unmake_move(p_board, arg_ball);
