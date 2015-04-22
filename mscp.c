@@ -3003,7 +3003,7 @@ static int p_vsearch(int depth, int alpha, int beta)
                         p_unmake_move(p_board);
 
 		
-			free(p_board);	  
+			free(p_board );	  
                         continue;
                 }
 
@@ -3028,7 +3028,7 @@ static int p_vsearch(int depth, int alpha, int beta)
                 p_unmake_move(p_board);
 		
 
-		free(p_board);
+		free(p_board );
 		  
                 if (score <= best_score) continue;
                 best_score = score;
@@ -3206,7 +3206,7 @@ static int p_root_search(int maxdepth)
 	p_unmake_move(p_board);
 	array_compare(p_board, board, 67, "after first unmake.");
 	*m = *--move_sp; /* drop this move */
-	free(p_board);
+	free(p_board );
 	
 	continue;
       }
@@ -3234,7 +3234,7 @@ static int p_root_search(int maxdepth)
       p_unmake_move(p_board);
       
       array_compare(p_board, board, 67, "after second unmake.");
-      free(p_board);
+      free(p_board );
       /*Fix window if it was too narrow.*/
       if (score>=beta || (score<=alpha && m==move_stack)) {
 	alpha = -INF;
