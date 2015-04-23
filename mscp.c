@@ -26,7 +26,7 @@ char mscp_c_rcsid[] = "@(#)$Id: mscp.c,v 1.18 2003/12/14 15:12:12 marcelk Exp $"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-/*#include "cycle_timer.h"*/
+//#include "cycle_timer.h"
 #include <cilk/cilk.h>
 
 
@@ -83,7 +83,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 3;                /* Maximum search depth */
+static int maxdepth = 4;                /* Maximum search depth */
 static int parallel_code=0;
 static int random_countdown=15;
 
@@ -3331,7 +3331,13 @@ int main(int argc, char *argv[])
         int move;
 	clock_t start, end;
 	FILE*write_time;
-	write_time=fopen("time.dat", "w");
+
+	if (argc>2 && atoi(argv[2])==1 ){
+	  write_time=fopen("time2.dat", "w");
+	}
+	else{
+	  write_time=fopen("time1.dat", "w");
+	}
 	fprintf(stderr, "Started.\n");
 
         puts(startup_message);
