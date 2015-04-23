@@ -27,6 +27,8 @@ char mscp_c_rcsid[] = "@(#)$Id: mscp.c,v 1.18 2003/12/14 15:12:12 marcelk Exp $"
 #include <string.h>
 #include <time.h>
 /*#include "cycle_timer.h"*/
+/*#include <cilk.h>*/
+
 
 typedef unsigned char byte;
 #define INF 32000
@@ -83,6 +85,7 @@ static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
 static int maxdepth = 3;                /* Maximum search depth */
 static int parallel_code=0;
+static int random_countdown=15;
 
 /* Constants for static move ordering (pre-scores) */
 #define PRESCORE_EQUAL       (10U<<9)
@@ -1559,8 +1562,14 @@ if (parallel_code){
         }
         score += (white_has - black_has);
 
+
+
         /* some noise to randomize play */
-        score += (hash_stack[ply] ^ rnd_seed) % 17 - 8;
+	/*But only for the first few turns of the game.*/
+	if (random_countdown>0){
+	  score += (hash_stack[ply] ^ rnd_seed) % 17 - 8;
+	}
+
 
         return WTM ? score : -score;
 }
@@ -1983,7 +1992,8 @@ static void cmd_set_depth(char *s)
 
 static void cmd_new(char *dummy)
 {
-        setup_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
+  random_countdown=15;
+  setup_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
         load_book("book.txt");
         computer[0] = 0;
         computer[1] = 1;
@@ -2657,7 +2667,9 @@ static int p_evaluate(byte* p_board, ball*arg_ball)
         score += (white_has - black_has);
 
         /* some noise to randomize play */
-        score += (hash_stack[ply] ^ rnd_seed) % 17 - 8;
+        if (random_countdown>0){
+	  score += (hash_stack[ply] ^ rnd_seed) % 17 - 8;
+	}
 
         return WTM ? score : -score;
 }
@@ -3391,12 +3403,13 @@ int main(int argc, char *argv[])
                                 memset(&core, 0, sizeof(core));
                                 memset(history, 0, sizeof(history));
 
-				if (argc>2 && atoi(argv[2])==1){
+				if (argc>2 && atoi(argv[2])==1 && random_countdown<=0){
 				  move=p_root_search(maxdepth);
 				    }
-				    else{
+				else{
                                 move = root_search(maxdepth);
-				}
+				    }
+				random_countdown-=1;
                         }
 
 			end=clock();
