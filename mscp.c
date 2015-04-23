@@ -1,4 +1,4 @@
-
+//DONT FORGET TO FREE ARG_BALL MEMORY
 /*----------------------------------------------------------------------+
  |                                                                      |
  |              mscp.c - Marcel's Simple Chess Program                  |
@@ -83,7 +83,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 4;                /* Maximum search depth */
+static int maxdepth = 5;                /* Maximum search depth */
 static int parallel_code=0;
 static int random_countdown=15;
 
@@ -2083,12 +2083,12 @@ static void p_compute_attacks(byte* p_board, ball*arg_ball)
         memset(&(arg_ball->white), 0, sizeof arg_ball->white);
         memset(&(arg_ball->black), 0, sizeof (arg_ball->black));
 
-	fprintf(stderr, "About to assign friend and foe\n");
+
 
         arg_ball->friend = WTM ? &(arg_ball->white) : &(arg_ball->black);
         arg_ball->enemy = WTM ? &(arg_ball->black) : &(arg_ball->white);
 
-	fprintf(stderr, "Just assigned friend and foe\n");
+
 
         for (sq=0; sq<64; sq++) {
                 pc = p_board[sq];
@@ -2683,17 +2683,17 @@ static ball* setup(struct side * arg_white, struct side* arg_black, struct side*
   /*result->friend=arg_friend;
     result->enemy=arg_enemy;*/
     if(arg_black==arg_friend &&arg_white==arg_enemy){
-    fprintf(stderr, "Black was friend.\n");
+    
     result->enemy=&(result->white);
     result->friend=&(result->black);
   }
   else if(arg_white==arg_friend &&arg_black==arg_enemy){
-    fprintf(stderr, "White was friend.\n");
+    
     result->enemy=&(result->black);
     result->friend=&(result->white);
   }
   else{
-    fprintf(stderr, "ERROR: b/w friend enemy pointers are messed up.\n");
+    
     } 
 
   return result;
@@ -2893,7 +2893,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 	int                             proceed=1;
 
 
-	fprintf(stderr,"Starting vsearch\n");
+
         /*SIMPLE we cut these variables when we don't use the hash table
        
 	struct tt                       *tt;
@@ -2949,7 +2949,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		
                 int newdepth;
                 int move;
-		fprintf(stderr, "in proceed while of vsearch.\n");
+		
                 move_sp--;
                 move = move_sp->move;
                 make_move(move);
@@ -2980,7 +2980,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 
                 move_sp = moves; /* fail high: skip remaining moves */
 		
-		fprintf(stderr, "Failing high in proceed of  vsearch.\n");
+		
         }
 
 
@@ -3002,7 +3002,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		}
 		
 
-		fprintf(stderr, "in parallel while of vsearch.\n");
+		
 		
                 move_sp--;
                 move = move_sp->move;
@@ -3096,7 +3096,7 @@ void array_compare(byte* arr1, byte* arr2, int len, char* message){
   while ((j<len) && proceed){
     if (arr1[j]!=arr2[j]){
 	proceed=0;
-	fprintf(stderr, "found a discrepancy at %s\n", message);
+	
       }
     j++;
 
@@ -3131,7 +3131,7 @@ static int p_root_search(int maxdepth)
   
   for (depth = 1; depth <= maxdepth; depth++) {
     int proceed=1;
-    fprintf(stderr, "increasing depth to %d\n", depth);
+    
     m = move_stack;
     best_score = INT_MIN;
     
@@ -3140,12 +3140,12 @@ static int p_root_search(int maxdepth)
     
     /*in parallel version the first iteration works different than subsequent iterations.*/
     while (m < move_sp && proceed) {
-      fprintf(stderr, "In while proceed %d\n", depth);
+      
       /*go into move, check if legal;*/
       make_move(m->move);
       compute_attacks();
       if (friend->attack[enemy->king] != 0) { /* illegal? */
-	fprintf(stderr, "Passed friend-enemy check\n");
+
 	unmake_move();
 	*m = *--move_sp; /* drop this move */
 	continue;
@@ -3159,11 +3159,11 @@ static int p_root_search(int maxdepth)
       
       /*do normal search. Or if end of depth, Q-Search*/
       if (depth-1 > 0) {
-	fprintf(stderr,"succeeded if-check\n");
+	
 	/*TEMP change*/
 	score = -p_vsearch(depth-1, -beta, -alpha);
       } else {
-	fprintf(stderr,"failed if-check, depth was %d\n", depth);
+	
 	score = -qsearch(-beta, -alpha);
       }
       unmake_move();
@@ -3209,7 +3209,7 @@ static int p_root_search(int maxdepth)
 
 	}
 
-      array_compare(p_board, board, 67, "just after creation.");
+
       /*go into move, check if legal;*/
       
       /*TEMP this should be a deep copy of board*/
@@ -3221,7 +3221,7 @@ static int p_root_search(int maxdepth)
 	
 	/*TEMP this needs to be a deep copy of board.*/
 	p_unmake_move(p_board, arg_ball);
-	array_compare(p_board, board, 67, "after first unmake.");
+
 	*m = *--move_sp; /* drop this move */
 	free(p_board );
 	
@@ -3250,7 +3250,7 @@ static int p_root_search(int maxdepth)
       /*TEMP  This needs to be deep copy of board*/
       p_unmake_move(p_board, arg_ball);
       
-      array_compare(p_board, board, 67, "after second unmake.");
+      
       free(p_board );
       /*Fix window if it was too narrow.*/
       if (score>=beta || (score<=alpha && m==move_stack)) {
@@ -3415,6 +3415,7 @@ int main(int argc, char *argv[])
 				else{
                                 move = root_search(maxdepth);
 				    }
+				fprintf(stderr,"Did move %d\n", ply);
 				random_countdown-=1;
                         }
 
