@@ -27,7 +27,7 @@ char mscp_c_rcsid[] = "@(#)$Id: mscp.c,v 1.18 2003/12/14 15:12:12 marcelk Exp $"
 #include <string.h>
 #include <time.h>
 /*#include "cycle_timer.h"*/
-/*#include <cilk.h>*/
+#include <cilk/cilk.h>
 
 
 typedef unsigned char byte;

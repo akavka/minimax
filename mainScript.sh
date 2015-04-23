@@ -1,6 +1,8 @@
 #!/bin/bash
+source /afs/cs/academic/class/15210-f14/cilk/gccvars_bash.sh
 
-make
+gcc -fcilkplus -lcilkrts mscp.c
+#make
 ./mscp $1  < inputBoth.txt > out1.txt
 
 echo "Did first run."
