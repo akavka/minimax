@@ -1,4 +1,4 @@
-//DONT FORGET TO FREE ARG_BALL MEMORY
+
 /*----------------------------------------------------------------------+
  |                                                                      |
  |              mscp.c - Marcel's Simple Chess Program                  |
@@ -83,7 +83,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 5;                /* Maximum search depth */
+static int maxdepth = 4;                /* Maximum search depth */
 static int parallel_code=0;
 static int random_countdown=15;
 
@@ -2891,7 +2891,7 @@ static int p_vsearch(int depth, int alpha, int beta)
         struct move                     *moves;
         int                             incheck = 0;
 	int                             proceed=1;
-
+	int k=0;
 
 
         /*SIMPLE we cut these variables when we don't use the hash table
@@ -2989,10 +2989,10 @@ static int p_vsearch(int depth, int alpha, int beta)
          *  loop over all moves
          */
 	parallel_code=1;
-        while (move_sp > moves) {
+        cilk_for (k=0;move_sp > moves; k++) {
                 int newdepth;
                 int move;
-		
+		int go_on=1;
 		byte* p_board=(byte*) malloc(67*sizeof(byte));
 		int j=0;
 		ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps);
@@ -3019,44 +3019,51 @@ static int p_vsearch(int depth, int alpha, int beta)
 		  /*TEMP this should be a deep copy of board*/
                         p_unmake_move(p_board, arg_ball);
 
-		
+			free(arg_ball);
 			free(p_board );	  
-                        continue;
+                        go_on=0;
                 }
 
-                newdepth = incheck ? depth : depth-1;
-                if (newdepth <= 0) {
 
+		if(go_on){
+		  newdepth = incheck ? depth : depth-1;
+		  if (newdepth <= 0) {
+		    
+		    /*TEMP this should be a deep copy of board*/
+
+		    score = -p_qsearch(-beta, -alpha, p_board, arg_ball);
+		  } else {
+		    
+		    
+		    
+		  
+		    /*TEMP this should be deep copy of p_board*/
+		    score = -p_child_search(newdepth, -beta, -alpha, p_board, arg_ball);
+		  }
+		  if (score < -29000) score++;    /* adjust for mate-in-n */
+		  
+		  
 		  /*TEMP this should be a deep copy of board*/
-
-		  score = -p_qsearch(-beta, -alpha, p_board, arg_ball);
-                } else {
-
-
+		  p_unmake_move(p_board, arg_ball);
 		  
+		  free(arg_ball);
+		  free(p_board );
 		  
-		  /*TEMP this should be deep copy of p_board*/
-		  score = -p_child_search(newdepth, -beta, -alpha, p_board, arg_ball);
-                }
-                if (score < -29000) score++;    /* adjust for mate-in-n */
-
-
-		  /*TEMP this should be a deep copy of board*/
-                p_unmake_move(p_board, arg_ball);
-		
-
-		free(p_board );
+		  if (score <= best_score) go_on=0;
+		  if(go_on){
+		  best_score = score;
+		  best_move = move;
 		  
-                if (score <= best_score) continue;
-                best_score = score;
-                best_move = move;
-
-                if (score <= alpha) continue;
-                alpha = score;
-
-                if (score < beta) continue;
-
-                move_sp = moves; /* fail high: skip remaining moves */
+		  if (score <= alpha) go_on=0;
+		  if(go_on){
+		    alpha = score;
+		  
+		    if (score < beta) go_on=0;
+		  
+		    if(go_on) move_sp = moves; /* fail high: skip remaining moves */
+		  }
+		  }
+		}
         }
 	parallel_code=0;
 
@@ -3224,7 +3231,7 @@ static int p_root_search(int maxdepth)
 
 	*m = *--move_sp; /* drop this move */
 	free(p_board );
-	
+free(arg_ball);	
 	continue;
       }
       
@@ -3250,7 +3257,7 @@ static int p_root_search(int maxdepth)
       /*TEMP  This needs to be deep copy of board*/
       p_unmake_move(p_board, arg_ball);
       
-      
+      free(arg_ball);
       free(p_board );
       /*Fix window if it was too narrow.*/
       if (score>=beta || (score<=alpha && m==move_stack)) {
@@ -3278,6 +3285,7 @@ static int p_root_search(int maxdepth)
 	*m = tmp;
       }
 
+      
       m++; /* continue with next move */
     }
     parallel_code=0;
