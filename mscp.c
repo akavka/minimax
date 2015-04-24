@@ -83,7 +83,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 5;                /* Maximum search depth */
+static int maxdepth = 3;                /* Maximum search depth */
 static int parallel_code=0;
 static int random_countdown=15;
 
@@ -3019,7 +3019,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		  /*TEMP this should be a deep copy of board*/
                         p_unmake_move(p_board, arg_ball);
 
-		
+			free(arg_ball);
 			free(p_board );	  
                         continue;
                 }
@@ -3044,7 +3044,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		  /*TEMP this should be a deep copy of board*/
                 p_unmake_move(p_board, arg_ball);
 		
-
+		free(arg_ball);
 		free(p_board );
 		  
                 if (score <= best_score) continue;
@@ -3224,7 +3224,7 @@ static int p_root_search(int maxdepth)
 
 	*m = *--move_sp; /* drop this move */
 	free(p_board );
-	
+	free(arg_ball);
 	continue;
       }
       
@@ -3250,7 +3250,7 @@ static int p_root_search(int maxdepth)
       /*TEMP  This needs to be deep copy of board*/
       p_unmake_move(p_board, arg_ball);
       
-      
+      free(arg_ball);
       free(p_board );
       /*Fix window if it was too narrow.*/
       if (score>=beta || (score<=alpha && m==move_stack)) {
