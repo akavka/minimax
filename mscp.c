@@ -1,4 +1,4 @@
-//DONT FORGET TO FREE ARG_BALL MEMORY
+
 /*----------------------------------------------------------------------+
  |                                                                      |
  |              mscp.c - Marcel's Simple Chess Program                  |
@@ -2322,11 +2322,11 @@ static int p_push_move(int fr, int to, byte* p_board, ball *arg_ball)
 
         if (prescore >= caps) {
                 move = MOVE(fr, to);
-                move_sp->move = move;
+                arg_ball->move_sp->move = move;
 
 		/*SIMPLE history was removed*/
-                move_sp->prescore = prescore /*| history[move]*/;
-                move_sp++;
+                arg_ball->move_sp->prescore = prescore /*| history[move]*/;
+                arg_ball->move_sp++;
                 return 1;
         }
         return 0;
@@ -2339,9 +2339,9 @@ static void p_push_special_move(int fr, int to)
         move = MOVE(fr, to);
 
 	/*SIMPLE history was removed*/
-        move_sp->prescore = PRESCORE_EQUAL /*| history[move]*/;
-        move_sp->move = move | SPECIAL;
-        move_sp++;
+        arg_ball->move_sp->prescore = PRESCORE_EQUAL /*| history[move]*/;
+        arg_ball->move_sp->move = move | SPECIAL;
+        arg_ball->move_sp++;
 }
 
 static void p_push_pawn_move(int fr, int to, byte* p_board, ball*arg_ball)
@@ -2349,11 +2349,11 @@ static void p_push_pawn_move(int fr, int to, byte* p_board, ball*arg_ball)
         if ((R(to) == RANK_8) || (R(to) == RANK_1)) {
                 p_push_special_move(fr, to);          /* queen promotion */
                 p_push_special_move(fr, to);          /* rook promotion */
-                move_sp[-1].move += 1<<13;
+                arg_ball->move_sp[-1].move += 1<<13;
                 p_push_special_move(fr, to);          /* bishop promotion */
-                move_sp[-1].move += 2<<13;
+                arg_ball->move_sp[-1].move += 2<<13;
                 p_push_special_move(fr, to);          /* knight promotion */
-                move_sp[-1].move += 3<<13;
+                arg_ball->move_sp[-1].move += 3<<13;
         } else {
 	  p_push_move(fr, to, p_board, arg_ball);
         }
@@ -2477,7 +2477,7 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
                                 if (p_board[to] == EMPTY) {
 				  if (p_push_move(fr, to,p_board, arg_ball))
                                         if ((arg_ball->black).attack[to-DIR_N]) {
-                                                move_sp[-1].move |= SPECIAL;
+                                                arg_ball->move_sp[-1].move |= SPECIAL;
                                         }
                                 }
                         }
@@ -2506,7 +2506,7 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
                                 if (p_board[to] == EMPTY) {
 				  if (p_push_move(fr, to, p_board, arg_ball))
                                         if (arg_ball->white.attack[to+DIR_N]) {
-                                                move_sp[-1].move |= SPECIAL;
+                                                arg_ball->move_sp[-1].move |= SPECIAL;
                                         }
                                 }
                         }
@@ -2553,20 +2553,20 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
                 if (WTM) {
                         if (F(ep) != FILE_A && p_board[ep-DIR_E] == WHITE_PAWN) {
 			  if (p_push_move(ep-DIR_E, ep+DIR_N, p_board, arg_ball))
-                                        move_sp[-1].move |= SPECIAL;
+                                        arg_ball->move_sp[-1].move |= SPECIAL;
                         }
                         if (F(ep) != FILE_H && p_board[ep+DIR_E] == WHITE_PAWN) {
 			  if (p_push_move(ep+DIR_E, ep+DIR_N, p_board, arg_ball))
-                                        move_sp[-1].move |= SPECIAL;
+                                        arg_ball->move_sp[-1].move |= SPECIAL;
                         }
                 } else {
                         if (F(ep) != FILE_A && p_board[ep-DIR_E] == BLACK_PAWN) {
 			  if (p_push_move(ep-DIR_E, ep-DIR_N, p_board, arg_ball))
-                                        move_sp[-1].move |= SPECIAL;
+                                        arg_ball->move_sp[-1].move |= SPECIAL;
                         }
                         if (F(ep) != FILE_H && p_board[ep+DIR_E] == BLACK_PAWN) {
 			  if (p_push_move(ep+DIR_E, ep-DIR_N, p_board, arg_ball))
-                                        move_sp[-1].move |= SPECIAL;
+                                        arg_ball->move_sp[-1].move |= SPECIAL;
                         }
                 }
         }
@@ -2674,12 +2674,23 @@ static int p_evaluate(byte* p_board, ball*arg_ball)
         return WTM ? score : -score;
 }
 
-static ball* setup(struct side * arg_white, struct side* arg_black, struct side* arg_friend, struct side* arg_enemy, int arg_ply, unsigned short arg_caps){
+static ball* setup(struct side * arg_white, struct side* arg_black, struct side* arg_friend, struct side* arg_enemy, int arg_ply, unsigned short arg_caps, struct move* copy_move_stack, int offset){
   ball*result=(ball*)malloc(sizeof(ball));
   result->white=(*arg_white);
   result->black=(*arg_black);
   result->ply=arg_ply;
   result->caps=arg_caps;
+  
+  memcpy(copy_move_stack, move_stack, 1024*sizeof(struct move));
+  result->move_sp=copy_move_stack+offset;
+
+  if ((*((int*)(result->move_sp)))!=(*((int*)(move_sp)))){
+    fprintf(stderr,"move_sp wasn't copied correctly\n");
+  }
+  else{
+    fprintf(stderr,"YES, move_sp was copied correctly\n");
+}
+
   /*result->friend=arg_friend;
     result->enemy=arg_enemy;*/
     if(arg_black==arg_friend &&arg_white==arg_enemy){
@@ -2717,14 +2728,14 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball *arg_ball)
                 return best_score;
         }
 
-        moves = move_sp;
+        moves = arg_ball->move_sp;
         p_generate_moves(PRESCORE_EQUAL + (1<<9), p_board, arg_ball);
-        qsort(moves, move_sp - moves, sizeof(*moves), cmp_move);
-        while (move_sp > moves) {
+        qsort(moves, arg_ball->move_sp - moves, sizeof(*moves), cmp_move);
+        while (arg_ball->move_sp > moves) {
                 int move;
 
-                move_sp--;
-                move = move_sp->move;
+                arg_ball->move_sp--;
+                move = arg_ball->move_sp->move;
                 p_make_move(move, p_board, arg_ball);
 
                 p_compute_attacks(p_board, arg_ball);
@@ -2750,7 +2761,7 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball *arg_ball)
                 if (score < beta) {
                         continue;
                 }
-                move_sp = moves; /* fail high: skip remaining moves */
+                arg_ball->move_sp = moves; /* fail high: skip remaining moves */
         }
         return best_score;
 }
@@ -2805,22 +2816,22 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
         /*
          *  p_generate moves
          */
-        moves = move_sp;
+        moves = arg_ball->move_sp;
         p_generate_moves(0, p_board, arg_ball);
 
         history[best_move] &= 0x3fff;
         best_move = 0;
 
-        qsort(moves, move_sp - moves, sizeof(*moves), cmp_move);
+        qsort(moves, arg_ball->move_sp - moves, sizeof(*moves), cmp_move);
 
         /*
          *  loop over all moves
          */
-        while (move_sp > moves) {
+        while (arg_ball->move_sp > moves) {
                 int newdepth;
                 int move;
-                move_sp--;
-                move = move_sp->move;
+                arg_ball->move_sp--;
+                move = arg_ball->move_sp->move;
                 p_make_move(move, p_board, arg_ball);
                 p_compute_attacks(p_board, arg_ball);
                 if (arg_ball->friend->attack[arg_ball->enemy->king]) {
@@ -2850,7 +2861,7 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
 
                 if (score < beta) continue;
 
-                move_sp = moves; /* fail high: skip remaining moves */
+                arg_ball->move_sp = moves; /* fail high: skip remaining moves */
         }
 
         if (best_score == -INF) { /* deal with mate and stalemate */
@@ -2891,7 +2902,7 @@ static int p_vsearch(int depth, int alpha, int beta)
         struct move                     *moves;
         int                             incheck = 0;
 	int                             proceed=1;
-
+	struct move *k;
 
 
         /*SIMPLE we cut these variables when we don't use the hash table
@@ -2949,7 +2960,8 @@ static int p_vsearch(int depth, int alpha, int beta)
 		
                 int newdepth;
                 int move;
-		
+	
+	
                 move_sp--;
                 move = move_sp->move;
                 make_move(move);
@@ -2989,23 +3001,28 @@ static int p_vsearch(int depth, int alpha, int beta)
          *  loop over all moves
          */
 	parallel_code=1;
-        while (move_sp > moves) {
+        for(k=move_sp; k>moves; k--){
+	  //	while (move_sp > moves) {
                 int newdepth;
                 int move;
 		
 		byte* p_board=(byte*) malloc(67*sizeof(byte));
 		int j=0;
-		ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps);
+		struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
+		ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, k-move_stack);
 		
+		
+
+
 		for (j=0; j<67; j++){
 		  p_board[j]=board[j];
 		}
 		
 
 		
-		
-                move_sp--;
-                move = move_sp->move;
+		//		move_sp--;
+                (arg_ball->move_sp)--;
+                move = arg_ball->move_sp->move;
 
 		/*TEMP this should be deep copy of board*/
 
@@ -3018,7 +3035,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 		  /*TEMP this should be a deep copy of board*/
                         p_unmake_move(p_board, arg_ball);
-
+			free(move_stack_copy);
 			free(arg_ball);
 			free(p_board );	  
                         continue;
@@ -3044,6 +3061,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		  /*TEMP this should be a deep copy of board*/
                 p_unmake_move(p_board, arg_ball);
 		
+		free(move_stack_copy);
 		free(arg_ball);
 		free(p_board );
 		  
@@ -3055,7 +3073,8 @@ static int p_vsearch(int depth, int alpha, int beta)
                 alpha = score;
 
                 if (score < beta) continue;
-
+		
+		k=moves;
                 move_sp = moves; /* fail high: skip remaining moves */
         }
 	parallel_code=0;
@@ -3201,8 +3220,12 @@ static int p_root_search(int maxdepth)
     parallel_code=1;
     for (;m < move_sp;) {
       /*      byte*p_board=board;*/
-      ball* arg_ball=setup(&white, &black, friend, enemy, ply, caps);
-            int j=0;
+      
+      struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
+      ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, (move_sp-move_stack));
+      
+      
+      int j=0;
       byte* p_board=(byte*) malloc(67*sizeof(byte));
       for (j=0;j<67; j++){
 	p_board[j]=board[j];
@@ -3223,6 +3246,8 @@ static int p_root_search(int maxdepth)
 	p_unmake_move(p_board, arg_ball);
 
 	*m = *--move_sp; /* drop this move */
+
+	free(move_stack_copy);
 	free(p_board );
 	free(arg_ball);
 	continue;
@@ -3250,6 +3275,7 @@ static int p_root_search(int maxdepth)
       /*TEMP  This needs to be deep copy of board*/
       p_unmake_move(p_board, arg_ball);
       
+      free(move_stack_copy);
       free(arg_ball);
       free(p_board );
       /*Fix window if it was too narrow.*/
