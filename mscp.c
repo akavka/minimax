@@ -1,4 +1,14 @@
 
+
+/*----------------------------------------------------------------------+
+Adam's parallel chess program.
+Created 1 April 2015
+Updated: May 2015
+This code takes Marcel's Simple Chess Program and improves it by adding
+Cilk.
+ */
+
+
 /*----------------------------------------------------------------------+
  |                                                                      |
  |              mscp.c - Marcel's Simple Chess Program                  |
@@ -3020,7 +3030,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		
 
 		
-				move_sp--;
+		move_sp--;
                 (arg_ball->move_sp)--;
                 move = arg_ball->move_sp->move;
 
