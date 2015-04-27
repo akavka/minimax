@@ -2342,7 +2342,7 @@ static int p_push_move(int fr, int to, byte* p_board, ball *arg_ball)
         return 0;
 }
 
-static void p_push_special_move(int fr, int to)
+static void p_push_special_move(int fr, int to, ball* arg_ball)
 {
         int move;
 
@@ -2357,12 +2357,12 @@ static void p_push_special_move(int fr, int to)
 static void p_push_pawn_move(int fr, int to, byte* p_board, ball*arg_ball)
 {
         if ((R(to) == RANK_8) || (R(to) == RANK_1)) {
-                p_push_special_move(fr, to);          /* queen promotion */
-                p_push_special_move(fr, to);          /* rook promotion */
+	  p_push_special_move(fr, to, arg_ball);          /* queen promotion */
+	  p_push_special_move(fr, to, arg_ball);          /* rook promotion */
                 arg_ball->move_sp[-1].move += 1<<13;
-                p_push_special_move(fr, to);          /* bishop promotion */
+                p_push_special_move(fr, to, arg_ball);          /* bishop promotion */
                 arg_ball->move_sp[-1].move += 2<<13;
-                p_push_special_move(fr, to);          /* knight promotion */
+                p_push_special_move(fr, to, arg_ball);          /* knight promotion */
                 arg_ball->move_sp[-1].move += 3<<13;
         } else {
 	  p_push_move(fr, to, p_board, arg_ball);
@@ -2532,25 +2532,25 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
                         !p_board[F1] && !p_board[G1] &&
                         !arg_ball->enemy->attack[F1])
                 {
-                        p_push_special_move(E1, G1);
+		  p_push_special_move(E1, G1, arg_ball);
                 }
                 if (WTM && (p_board[CASTLE] & CASTLE_WHITE_QUEEN) &&
                         !p_board[D1] && !p_board[C1] && !p_board[B1] &&
                         !arg_ball->enemy->attack[D1])
                 {
-                        p_push_special_move(E1, C1);
+		  p_push_special_move(E1, C1, arg_ball);
                 }
                 if (!WTM && (p_board[CASTLE] & CASTLE_BLACK_KING) &&
                         !p_board[F8] && !p_board[G8] &&
                         !arg_ball->enemy->attack[F8])
                 {
-                        p_push_special_move(E8, G8);
+		  p_push_special_move(E8, G8, arg_ball);
                 }
                 if (!WTM && (p_board[CASTLE] & CASTLE_BLACK_QUEEN) &&
                         !p_board[D8] && !p_board[C8] && !p_board[B8] &&
                         !arg_ball->enemy->attack[D8])
                 {
-                        p_push_special_move(E8, C8);
+		  p_push_special_move(E8, C8, arg_ball);
                 }
         }
 
