@@ -6,7 +6,7 @@ Created 1 April 2015
 Updated: May 2015
 This code takes Marcel's Simple Chess Program and improves it by adding
 Cilk.
- */
++----------------------------------------------------------------------*/
 
 
 /*----------------------------------------------------------------------+
@@ -1576,7 +1576,9 @@ if (parallel_code){
 
         /* some noise to randomize play */
 	/*But only for the first few turns of the game.*/
-	if (random_countdown>0){
+	
+	/*TEMP removed noise*/
+	if(0){	//if (random_countdown>0){
 	  score += (hash_stack[ply] ^ rnd_seed) % 17 - 8;
 	}
 
@@ -2676,8 +2678,11 @@ static int p_evaluate(byte* p_board, ball*arg_ball)
         }
         score += (white_has - black_has);
 
+
+	/*TEMP removed noise*/
+	if(0){
         /* some noise to randomize play */
-        if (random_countdown>0){
+	  //        if (random_countdown>0){
 	  score += (hash_stack[ply] ^ rnd_seed) % 17 - 8;
 	}
 
@@ -2694,12 +2699,12 @@ static ball* setup(struct side * arg_white, struct side* arg_black, struct side*
   memcpy(copy_move_stack, move_stack, 1024*sizeof(struct move));
   result->move_sp=copy_move_stack+offset;
 
-  if ((*((int*)(result->move_sp)))!=(*((int*)(move_sp)))){
+  /*  if ((*((int*)(result->move_sp)))!=(*((int*)(move_sp)))){
     fprintf(stderr,"move_sp wasn't copied correctly\n");
   }
   else{
     fprintf(stderr,"YES, move_sp was copied correctly\n");
-}
+    }*/
 
   /*result->friend=arg_friend;
     result->enemy=arg_enemy;*/
@@ -3011,7 +3016,9 @@ static int p_vsearch(int depth, int alpha, int beta)
          *  loop over all moves
          */
 	parallel_code=1;
-        for(k=move_sp; k>moves; k--){
+       
+		for(k=move_sp; k>moves; k--){
+	//	for(k=moves+1; k<=move_sp; k++){
 	  //	while (move_sp > moves) {
                 int newdepth;
                 int move;
@@ -3020,9 +3027,9 @@ static int p_vsearch(int depth, int alpha, int beta)
 		int j=0;
 		struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
 		ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, k-move_stack);
-		arg_ball->move_sp=move_sp;
 		
-
+		/*TEMP used to prove that global variable isn't being touched.*/
+		move_sp+=3;
 
 		for (j=0; j<67; j++){
 		  p_board[j]=board[j];
@@ -3047,7 +3054,10 @@ static int p_vsearch(int depth, int alpha, int beta)
                         p_unmake_move(p_board, arg_ball);
 			free(move_stack_copy);
 			free(arg_ball);
-			free(p_board );	  
+			free(p_board );
+
+		/*TEMP used to prove that global variable isn't being touched.*/
+			move_sp-=3;
                         continue;
                 }
 
@@ -3074,7 +3084,9 @@ static int p_vsearch(int depth, int alpha, int beta)
 		free(move_stack_copy);
 		free(arg_ball);
 		free(p_board );
-		  
+
+		/*TEMP used to prove that global variable isn't being touched.*/
+		move_sp-=3;
                 if (score <= best_score) continue;
                 best_score = score;
                 best_move = move;
@@ -3083,9 +3095,12 @@ static int p_vsearch(int depth, int alpha, int beta)
                 alpha = score;
 
                 if (score < beta) continue;
+
+
+		
 		
 		k=moves;
-                move_sp = moves; /* fail high: skip remaining moves */
+		move_sp = moves; /* fail high: skip remaining moves */
         }
 	parallel_code=0;
 
@@ -3233,14 +3248,15 @@ static int p_root_search(int maxdepth)
       
       struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
       ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, (move_sp-move_stack));
-      arg_ball->move_sp=move_sp;
-      
+      arg_ball->move_sp=move_sp;      
+
       int j=0;
       byte* p_board=(byte*) malloc(67*sizeof(byte));
       for (j=0;j<67; j++){
 	p_board[j]=board[j];
 
 	}
+      move_sp+=3;
 
 
       /*go into move, check if legal;*/
@@ -3256,10 +3272,12 @@ static int p_root_search(int maxdepth)
 	p_unmake_move(p_board, arg_ball);
 
 	*m = *--(arg_ball->move_sp); /* drop this move */
+	
 	move_sp=arg_ball->move_sp;
 	free(move_stack_copy);
 	free(p_board );
 	free(arg_ball);
+
 	continue;
       }
       
@@ -3290,6 +3308,7 @@ static int p_root_search(int maxdepth)
       free(move_stack_copy);
       free(arg_ball);
       free(p_board );
+      
       /*Fix window if it was too narrow.*/
       if (score>=beta || (score<=alpha && m==move_stack)) {
 	alpha = -INF;
