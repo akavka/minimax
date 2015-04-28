@@ -2205,9 +2205,9 @@ static void p_unmake_move(byte* p_board, ball*arg_ball)
         int sq;
 
         for (;;) {
-                sq = *--undo_sp;
+                sq = *--arg_ball->undo_sp;
                 if (sq < 0) break;               /* Found sentinel */
-                p_board[sq] = *--undo_sp;
+                p_board[sq] = *--arg_ball->undo_sp;
         }
         ply--;
 }
@@ -2219,11 +2219,11 @@ static void p_make_move(int move, byte* p_board, ball *arg_ball)
         int to;
         int sq;
 
-        *undo_sp++ = -1;                        /* Place sentinel */
+        *arg_ball->undo_sp++ = -1;                        /* Place sentinel */
 
         if (p_board[EP]) {                        /* Clear en-passant info */
-                *undo_sp++ = p_board[EP];
-                *undo_sp++ = EP;
+                *arg_ball->undo_sp++ = p_board[EP];
+                *arg_ball->undo_sp++ = EP;
                 p_board[EP] = 0;
         }
 
@@ -2243,12 +2243,12 @@ static void p_make_move(int move, byte* p_board, ball *arg_ball)
 
                 case RANK_7:
                         if (p_board[fr] == BLACK_PAWN) { /* Set en-passant flag */
-                                *undo_sp++ = 0;
-                                *undo_sp++ = EP;
+                                *arg_ball->undo_sp++ = 0;
+                                *arg_ball->undo_sp++ = EP;
                                 p_board[EP] = to;
                         } else {                /* White promotes */
-                                *undo_sp++ = p_board[fr];
-                                *undo_sp++ = fr;
+                                *arg_ball->undo_sp++ = p_board[fr];
+                                *arg_ball->undo_sp++ = fr;
                                 p_board[fr] = WHITE_QUEEN + (move>>13);
                         }
                         break;
@@ -2256,19 +2256,19 @@ static void p_make_move(int move, byte* p_board, ball *arg_ball)
                 case RANK_5:                    /* White captures en-passant */
                 case RANK_4:                    /* Black captures en-passant */
                         sq = SQ(F(to),R(fr));
-                        *undo_sp++ = p_board[sq];
-                        *undo_sp++ = sq;
+                        *arg_ball->undo_sp++ = p_board[sq];
+                        *arg_ball->undo_sp++ = sq;
                         p_board[sq] = EMPTY;
                         break;
 
                 case RANK_2:
                         if (p_board[fr] == WHITE_PAWN) { /* Set en-passant flag */
-                                *undo_sp++ = 0;
-                                *undo_sp++ = EP;
+                                *arg_ball->undo_sp++ = 0;
+                                *arg_ball->undo_sp++ = EP;
                                 p_board[EP] = to;
                         } else {                /* Black promotes */
-                                *undo_sp++ = p_board[fr];
-                                *undo_sp++ = fr;
+                                *arg_ball->undo_sp++ = p_board[fr];
+                                *arg_ball->undo_sp++ = fr;
                                 p_board[fr] = BLACK_QUEEN + (move>>13);
                         }
                         break;
@@ -2291,22 +2291,22 @@ static void p_make_move(int move, byte* p_board, ball *arg_ball)
         if (p_board[to]!=EMPTY ||
             p_board[fr]==WHITE_PAWN || p_board[fr]==BLACK_PAWN
         ) {
-                *undo_sp++ = p_board[LAST];
-                *undo_sp++ = LAST;
+                *arg_ball->undo_sp++ = p_board[LAST];
+                *arg_ball->undo_sp++ = LAST;
                 p_board[LAST] = ply;
         }
 
-        *undo_sp++ = p_board[to];
-        *undo_sp++ = to;
-        *undo_sp++ = p_board[fr];
-        *undo_sp++ = fr;
+        *arg_ball->undo_sp++ = p_board[to];
+        *arg_ball->undo_sp++ = to;
+        *arg_ball->undo_sp++ = p_board[fr];
+        *arg_ball->undo_sp++ = fr;
 
         p_board[to] = p_board[fr];
         p_board[fr] = EMPTY;
 
         if (p_board[CASTLE] & (castle[fr] | castle[to])) {
-                *undo_sp++ = p_board[CASTLE];
-                *undo_sp++ = CASTLE;
+                *arg_ball->undo_sp++ = p_board[CASTLE];
+                *arg_ball->undo_sp++ = CASTLE;
                 p_board[CASTLE] &= ~(castle[fr] | castle[to]);
         }
 }
@@ -2698,7 +2698,7 @@ static ball* setup(struct side * arg_white, struct side* arg_black, struct side*
   
   memcpy(copy_move_stack, move_stack, 1024*sizeof(struct move));
   result->move_sp=copy_move_stack+offset;
-
+  result->undo_sp=(signed char*) malloc(6*1024*sizeof(signed char));
   /*  if ((*((int*)(result->move_sp)))!=(*((int*)(move_sp)))){
     fprintf(stderr,"move_sp wasn't copied correctly\n");
   }
