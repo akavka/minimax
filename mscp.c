@@ -2727,20 +2727,20 @@ static ball* setup(struct side * arg_white, struct side* arg_black, struct side*
 
 
 static void ruin_global_variables(){
-  //move_sp+=999;
-  //friend+=999;
-  //enemy+=999;
-  //undo_sp+=999;
-  //ply+=999;
+  move_sp+=999;
+  friend+=999;
+  enemy+=999;
+  undo_sp+=999;
+  ply+=999;
   caps+=999;
 }
 
 static void restore_global_variables(){
-  //move_sp-=999;
-  //friend-=999;
-  //enemy-=999;
-  //undo_sp-=999;
-  //ply-=999;
+  move_sp-=999;
+  friend-=999;
+  enemy-=999;
+  undo_sp-=999;
+  ply-=999;
   caps-=999;
 }
 
@@ -3049,7 +3049,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		
 		/*TEMP used to prove that global variable isn't being touched.*/
 		ruin_global_variables();
-
+		
 
 		for (j=0; j<67; j++){
 		  p_board[j]=board[j];
@@ -3078,6 +3078,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 		/*TEMP used to prove that global variable isn't being touched.*/
 			restore_global_variables();
+			
 			continue;
                 }
 
@@ -3106,7 +3107,8 @@ static int p_vsearch(int depth, int alpha, int beta)
 		free(p_board );
 
 		/*TEMP used to prove that global variable isn't being touched.*/
-		restore_global_variables;
+		restore_global_variables();
+		
 		if (score <= best_score) continue;
                 best_score = score;
                 best_move = move;
