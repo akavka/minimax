@@ -1577,8 +1577,8 @@ if (parallel_code){
         /* some noise to randomize play */
 	/*But only for the first few turns of the game.*/
 	
-	/*TEMP removed noise*/
-	if(0){	//if (random_countdown>0){
+
+	if (random_countdown>0){
 	  score += (hash_stack[ply] ^ rnd_seed) % 17 - 8;
 	}
 
@@ -2695,7 +2695,7 @@ static ball* setup(struct side * arg_white, struct side* arg_black, struct side*
   result->black=(*arg_black);
   result->ply=arg_ply;
   result->caps=arg_caps;
-  
+  result->ply=ply;
   memcpy(copy_move_stack, move_stack, 1024*sizeof(struct move));
   result->move_sp=copy_move_stack+offset;
   result->undo_sp=(signed char*) malloc(6*1024*sizeof(signed char));
