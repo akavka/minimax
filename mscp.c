@@ -2332,7 +2332,7 @@ static int p_push_move(int fr, int to, byte* p_board, ball *arg_ball)
                 }
         }
 
-        if (prescore >= caps) {
+        if (prescore >= arg_ball->caps) {
                 move = MOVE(fr, to);
                 arg_ball->move_sp->move = move;
 
@@ -2413,7 +2413,7 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
         int             pc;
         byte            dir, dirs;
 
-        caps = treshold;
+        arg_ball->caps = treshold;
 
         for (fr=0; fr<64; fr++) {
                 pc = p_board[fr];
@@ -2694,7 +2694,7 @@ static ball* setup(struct side * arg_white, struct side* arg_black, struct side*
   result->white=(*arg_white);
   result->black=(*arg_black);
   result->ply=arg_ply;
-  result->caps=arg_caps;
+  result->caps=caps;
   result->ply=ply;
   memcpy(copy_move_stack, move_stack, 1024*sizeof(struct move));
   result->move_sp=copy_move_stack+offset;
@@ -2723,6 +2723,25 @@ static ball* setup(struct side * arg_white, struct side* arg_black, struct side*
     } 
 
   return result;
+}
+
+
+static void ruin_global_variables(){
+  //move_sp+=999;
+  //friend+=999;
+  //enemy+=999;
+  //undo_sp+=999;
+  //ply+=999;
+  caps+=999;
+}
+
+static void restore_global_variables(){
+  //move_sp-=999;
+  //friend-=999;
+  //enemy-=999;
+  //undo_sp-=999;
+  //ply-=999;
+  caps-=999;
 }
 
 
@@ -3029,9 +3048,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, k-move_stack);
 		
 		/*TEMP used to prove that global variable isn't being touched.*/
-		move_sp+=3;
-		ply+=999;
-		
+		ruin_global_variables();
 
 
 		for (j=0; j<67; j++){
@@ -3060,9 +3077,8 @@ static int p_vsearch(int depth, int alpha, int beta)
 			free(p_board );
 
 		/*TEMP used to prove that global variable isn't being touched.*/
-			move_sp-=3;
-			ply-=999;
-                        continue;
+			restore_global_variables();
+			continue;
                 }
 
                 newdepth = incheck ? depth : depth-1;
@@ -3090,9 +3106,8 @@ static int p_vsearch(int depth, int alpha, int beta)
 		free(p_board );
 
 		/*TEMP used to prove that global variable isn't being touched.*/
-		move_sp-=3;
-		ply-=999;
-                if (score <= best_score) continue;
+		restore_global_variables;
+		if (score <= best_score) continue;
                 best_score = score;
                 best_move = move;
 
