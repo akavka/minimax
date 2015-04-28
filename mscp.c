@@ -191,7 +191,7 @@ enum { RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8 };
 #define FR(move)                (((move) & 07700) >> 6) /* from square */
 #define TO(move)                ((move) & 00077)        /* target square */
 /*SIMPLE I added this*/
-#define PWTM(ply)               (~ply & 1)              /* WTM with argument*/
+#define PWTM(x)                 (~x & 1)                /* WTM with argument*/
 #define SPECIAL                 (1<<12)                 /* for special moves */
 
 struct command {
@@ -2097,8 +2097,8 @@ static void p_compute_attacks(byte* p_board, ball*arg_ball)
 
 
 
-        arg_ball->friend = WTM ? &(arg_ball->white) : &(arg_ball->black);
-        arg_ball->enemy = WTM ? &(arg_ball->black) : &(arg_ball->white);
+        arg_ball->friend = PWTM(arg_ball->ply) ? &(arg_ball->white) : &(arg_ball->black);
+        arg_ball->enemy = PWTM(arg_ball->ply) ? &(arg_ball->black) : &(arg_ball->white);
 
 
 
@@ -2209,7 +2209,7 @@ static void p_unmake_move(byte* p_board, ball*arg_ball)
                 if (sq < 0) break;               /* Found sentinel */
                 p_board[sq] = *--arg_ball->undo_sp;
         }
-        ply--;
+        arg_ball->ply--;
 }
 
 
@@ -2287,13 +2287,13 @@ static void p_make_move(int move, byte* p_board, ball *arg_ball)
                 }
         }
 
-        ply++;
+        arg_ball->ply++;
         if (p_board[to]!=EMPTY ||
             p_board[fr]==WHITE_PAWN || p_board[fr]==BLACK_PAWN
         ) {
                 *arg_ball->undo_sp++ = p_board[LAST];
                 *arg_ball->undo_sp++ = LAST;
-                p_board[LAST] = ply;
+                p_board[LAST] = arg_ball->ply;
         }
 
         *arg_ball->undo_sp++ = p_board[to];
@@ -2322,7 +2322,7 @@ static int p_push_move(int fr, int to, byte* p_board, ball *arg_ball)
         }
 
         /* does the destination square look safe? */
-        if (WTM) {
+        if (PWTM(arg_ball->ply)) {
                 if ((arg_ball->black).attack[to] != 0) { /* defended */
                         prescore -= prescore_piece_value[p_board[fr]];
                 }
@@ -2387,7 +2387,7 @@ static void p_gen_slides(int fr, byte dirs, byte*p_board, ball *arg_ball)
                 do {
                         to += vector;
                         if (p_board[to] != EMPTY) {
-                                if (PIECE_COLOR(p_board[to]) != WTM) {
+                                if (PIECE_COLOR(p_board[to]) != PWTM(arg_ball->ply)) {
 				  p_push_move(fr, to, p_board, arg_ball);
                                 }
                                 break;
@@ -2417,7 +2417,7 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
 
         for (fr=0; fr<64; fr++) {
                 pc = p_board[fr];
-                if (!pc || PIECE_COLOR(pc) != WTM) continue;
+                if (!pc || PIECE_COLOR(pc) != PWTM(arg_ball->ply)) continue;
 
                 /*
                  *  generate moves for this piece
@@ -2432,7 +2432,7 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
                                 dir &= dirs;
                                 to = fr+king_step[dir];
                                 if (p_board[to] != EMPTY &&
-                                    PIECE_COLOR(p_board[to]) == WTM) continue;
+                                    PIECE_COLOR(p_board[to]) == PWTM(arg_ball->ply)) continue;
                                 p_push_move(fr, to, p_board, arg_ball);
                         } while (dirs -= dir);
                         break;
@@ -2461,7 +2461,7 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
                                 dir &= dirs;
                                 to = fr+knight_jump[dir];
                                 if (p_board[to] != EMPTY &&
-                                    PIECE_COLOR(p_board[to]) == WTM) continue;
+                                    PIECE_COLOR(p_board[to]) == PWTM(arg_ball->ply)) continue;
                                 p_push_move(fr, to, p_board, arg_ball);
                         } while (dirs -= dir);
                         break;
@@ -2530,25 +2530,25 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
          *  generate castling moves
          */
         if (p_board[CASTLE] && !arg_ball->enemy->attack[arg_ball->friend->king]) {
-                if (WTM && (p_board[CASTLE] & CASTLE_WHITE_KING) &&
+                if (PWTM(arg_ball->ply) && (p_board[CASTLE] & CASTLE_WHITE_KING) &&
                         !p_board[F1] && !p_board[G1] &&
                         !arg_ball->enemy->attack[F1])
                 {
 		  p_push_special_move(E1, G1, arg_ball);
                 }
-                if (WTM && (p_board[CASTLE] & CASTLE_WHITE_QUEEN) &&
+                if (PWTM(arg_ball->ply) && (p_board[CASTLE] & CASTLE_WHITE_QUEEN) &&
                         !p_board[D1] && !p_board[C1] && !p_board[B1] &&
                         !arg_ball->enemy->attack[D1])
                 {
 		  p_push_special_move(E1, C1, arg_ball);
                 }
-                if (!WTM && (p_board[CASTLE] & CASTLE_BLACK_KING) &&
+                if (!PWTM(arg_ball->ply) && (p_board[CASTLE] & CASTLE_BLACK_KING) &&
                         !p_board[F8] && !p_board[G8] &&
                         !arg_ball->enemy->attack[F8])
                 {
 		  p_push_special_move(E8, G8, arg_ball);
                 }
-                if (!WTM && (p_board[CASTLE] & CASTLE_BLACK_QUEEN) &&
+                if (!PWTM(arg_ball->ply) && (p_board[CASTLE] & CASTLE_BLACK_QUEEN) &&
                         !p_board[D8] && !p_board[C8] && !p_board[B8] &&
                         !arg_ball->enemy->attack[D8])
                 {
@@ -2562,7 +2562,7 @@ static void p_generate_moves(unsigned treshold, byte*p_board, ball*arg_ball)
         if (p_board[EP]) {
                 int ep = p_board[EP];
 
-                if (WTM) {
+                if (PWTM(arg_ball->ply)) {
                         if (F(ep) != FILE_A && p_board[ep-DIR_E] == WHITE_PAWN) {
 			  if (p_push_move(ep-DIR_E, ep+DIR_N, p_board, arg_ball))
                                         arg_ball->move_sp[-1].move |= SPECIAL;
@@ -2596,7 +2596,7 @@ static unsigned long p_compute_hash(byte* p_board, ball*arg_ball)
                         hash ^= zobrist[p_board[sq]-1][sq];
                 }
         }
-        return hash ^ WTM;
+        return hash ^ PWTM(arg_ball->ply);
 }
 
 
@@ -2683,10 +2683,10 @@ static int p_evaluate(byte* p_board, ball*arg_ball)
 	if(0){
         /* some noise to randomize play */
 	  //        if (random_countdown>0){
-	  score += (hash_stack[ply] ^ rnd_seed) % 17 - 8;
+	  score += (hash_stack[arg_ball->ply] ^ rnd_seed) % 17 - 8;
 	}
 
-        return WTM ? score : -score;
+        return PWTM(arg_ball->ply) ? score : -score;
 }
 
 static ball* setup(struct side * arg_white, struct side* arg_black, struct side* arg_friend, struct side* arg_enemy, int arg_ply, unsigned short arg_caps, struct move* copy_move_stack, int offset){
@@ -2737,7 +2737,7 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball *arg_ball)
 
 
 	/*SIMPLE no hash
-	  hash_stack[ply] = compute_hash();*/
+	  hash_stack[arg_ball->ply] = compute_hash();*/
         best_score = p_evaluate(p_board, arg_ball);
         if (best_score >= beta) {
                 return best_score;
@@ -2806,17 +2806,17 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
 
 	/*SIMPLE no hash stack
 	  test for draw by repetition*/ 
-        /*hash_stack[ply] = compute_hash();
-        for (i=ply-4; i>=board[LAST]; i-=2) {
-                if (hash_stack[i] == hash_stack[ply]) count++;
+        /*hash_stack[arg_ball->ply] = compute_hash();
+        for (i=arg_ball->ply-4; i>=board[LAST]; i-=2) {
+                if (hash_stack[i] == hash_stack[arg_ball->ply]) count++;
                 if (count>=2) return 0;
 		}*/
 
         
 	/*  check transposition table*/
 	/*
-        tt = &TTABLE[ ((hash_stack[ply]>>16) & (CORE-1)) ];
-        if (tt->hash == (hash_stack[ply] & 0xffffU)) {
+        tt = &TTABLE[ ((hash_stack[arg_ball->ply]>>16) & (CORE-1)) ];
+        if (tt->hash == (hash_stack[arg_ball->ply] & 0xffffU)) {
                 if (tt->depth >= depth) {
                         if (tt->flag >= 0) alpha = MAX(alpha, tt->score);
                         if (tt->flag <= 0) beta = MIN(beta,  tt->score);
@@ -2899,7 +2899,7 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
 	/*}
         }
 
-        tt->hash = hash_stack[ply] & 0xffffU;
+        tt->hash = hash_stack[arg_ball->ply] & 0xffffU;
         tt->move = best_move;
         tt->score = best_score;
         tt->depth = depth;
@@ -3030,6 +3030,9 @@ static int p_vsearch(int depth, int alpha, int beta)
 		
 		/*TEMP used to prove that global variable isn't being touched.*/
 		move_sp+=3;
+		ply+=999;
+		
+
 
 		for (j=0; j<67; j++){
 		  p_board[j]=board[j];
@@ -3058,6 +3061,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 		/*TEMP used to prove that global variable isn't being touched.*/
 			move_sp-=3;
+			ply-=999;
                         continue;
                 }
 
@@ -3087,6 +3091,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 		/*TEMP used to prove that global variable isn't being touched.*/
 		move_sp-=3;
+		ply-=999;
                 if (score <= best_score) continue;
                 best_score = score;
                 best_move = move;
@@ -3127,7 +3132,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 	/*}
         }
 
-        tt->hash = hash_stack[ply] & 0xffffU;
+        tt->hash = hash_stack[arg_ball->ply] & 0xffffU;
         tt->move = best_move;
         tt->score = best_score;
         tt->depth = depth;
@@ -3287,7 +3292,7 @@ static int p_root_search(int maxdepth)
       
       /*			 SIMPLE No hash stack
       //don't know what this is anyway
-      hash_stack[ply] = p_compute_hash(p_board, arg_ball);*/
+      hash_stack[arg_ball->ply] = p_compute_hash(p_board, arg_ball);*/
       
       
       /*do normal search. Or if end of depth, Q-Search*/
