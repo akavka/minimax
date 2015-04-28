@@ -3016,9 +3016,9 @@ static int p_vsearch(int depth, int alpha, int beta)
          *  loop over all moves
          */
 	parallel_code=1;
-       
-		for(k=move_sp; k>moves; k--){
-	//	for(k=moves+1; k<=move_sp; k++){
+	       
+	//	for(k=move_sp; k>moves; k--){
+	for(k=moves+1; k<=move_sp; k++){
 	  //	while (move_sp > moves) {
                 int newdepth;
                 int move;
@@ -3037,7 +3037,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		
 
 		
-		move_sp--;
+		//		move_sp--;
                 (arg_ball->move_sp)--;
                 move = arg_ball->move_sp->move;
 
@@ -3098,11 +3098,14 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 
 		
-		
-		k=moves;
-		move_sp = moves; /* fail high: skip remaining moves */
+			k=move_sp+1;
+			//	k=moves;
+			//move_sp = moves; /* fail high: skip remaining moves */
         }
 	parallel_code=0;
+
+	move_sp=moves;
+
 
         if (best_score == -INF) { /* deal with mate and stalemate */
                 if (incheck) {
