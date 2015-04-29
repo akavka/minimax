@@ -36,7 +36,7 @@ char mscp_c_rcsid[] = "@(#)$Id: mscp.c,v 1.18 2003/12/14 15:12:12 marcelk Exp $"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-//#include "cycle_timer.h"
+#include "cycle_timer.h"
 #include <cilk/cilk.h>
 #include <pthread.h>
 
@@ -93,7 +93,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 5;                /* Maximum search depth */
+static int maxdepth = 3;                /* Maximum search depth */
 static int parallel_code=0;
 static int random_countdown=15;
 
@@ -1645,7 +1645,7 @@ if (parallel_code){
                 if (score < beta) {
                         continue;
                 }
-		move_sp = moves; /* fail high: skip remaining moves */
+				move_sp = moves; /* fail high: skip remaining moves */
         }
         return best_score;
 }
@@ -1744,7 +1744,7 @@ if (parallel_code){
 
                 if (score < beta) continue;
 
-                move_sp = moves; /* fail high: skip remaining moves */
+		                move_sp = moves; /* fail high: skip remaining moves */
         }
 
         if (best_score == -INF) { /* deal with mate and stalemate */
@@ -2795,7 +2795,7 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball *arg_ball)
                 if (score < beta) {
                         continue;
                 }
-                arg_ball->move_sp = moves; /* fail high: skip remaining moves */
+		arg_ball->move_sp = moves; /* fail high: skip remaining moves */
         }
         return best_score;
 }
@@ -2895,7 +2895,7 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
 
                 if (score < beta) continue;
 
-                arg_ball->move_sp = moves; /* fail high: skip remaining moves */
+		arg_ball->move_sp = moves; /* fail high: skip remaining moves */
         }
 
         if (best_score == -INF) { /* deal with mate and stalemate */
@@ -3026,7 +3026,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 
                 if (score < beta) continue;
 
-                move_sp = moves; /* fail high: skip remaining moves */
+		                move_sp = moves; /* fail high: skip remaining moves */
 		
 		
         }
@@ -3152,7 +3152,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		  }
 
 		  if (local_score>beta){
-		    fail=1;
+		      fail=1;
 		    
 		  }
 
@@ -3459,8 +3459,10 @@ int main(int argc, char *argv[])
         char name[128];
         int move;
 	clock_t start, end;
+	double start_c, end_c;
 	FILE*write_time;
 
+	fprintf(stderr,"ticks Per Seconds is %f", ticksPerSecond()); 
 	if (argc>2 && atoi(argv[2])==1 ){
 	  write_time=fopen("time2.dat", "w");
 	}
@@ -3533,6 +3535,7 @@ int main(int argc, char *argv[])
 	  /*SIMPLEmove = book_move();*/
 		  move=0;
 		  start=clock();
+		  start_c=currentSeconds();
                         if (!move) {
                                 booksize = 0;
                                 memset(&core, 0, sizeof(core));
@@ -3549,7 +3552,9 @@ int main(int argc, char *argv[])
                         }
 
 			end=clock();
-			fprintf(write_time, "%f\n", ((double)end-start)/CLOCKS_PER_SEC);
+			end_c=currentSeconds();
+			//	fprintf(write_time, "%f\n", ((double)end-start)/CLOCKS_PER_SEC);
+			fprintf(write_time, "%f\n", end_c-start_c);
 
                         if (!move || ply >= 300) {
                                 printf("game over: ");
