@@ -3037,7 +3037,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 	parallel_code=1;
 	       
 	//	for(k=move_sp; k>moves; k--){
-	for(k=moves+1; k<=move_sp; k++){
+	cilk_for(k=moves+1; k<=move_sp; k++){
 	  //	while (move_sp > moves) {
                 int newdepth;
                 int move;
@@ -3129,7 +3129,8 @@ static int p_vsearch(int depth, int alpha, int beta)
 		}//end go_on
 		
 		if (go_on){
-		  k=move_sp+1;
+		  //TEMP: we're eliminating this optimization to be more cilk compliant
+		  //		  k=move_sp+1;
 		  //	k=moves;
 		  //move_sp = moves; /* fail high: skip remaining moves */
 		}//end go_on
