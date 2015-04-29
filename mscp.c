@@ -1645,7 +1645,7 @@ if (parallel_code){
                 if (score < beta) {
                         continue;
                 }
-                move_sp = moves; /* fail high: skip remaining moves */
+		move_sp = moves; /* fail high: skip remaining moves */
         }
         return best_score;
 }
@@ -3051,13 +3051,22 @@ static int p_vsearch(int depth, int alpha, int beta)
 		//Make local copies of global variables
 		struct move* move_stack_copy;
 		ball*arg_ball;
+
+
 		
 
-		  pthread_mutex_lock(&main_lock);
-		  local_alpha=alpha;
-		  if(fail)go_on=0;
-		  pthread_mutex_unlock(&main_lock);
 
+
+		//		pthread_mutex_lock(&main_lock);
+		local_alpha=alpha;
+		//pthread_mutex_unlock(&main_lock);		  
+
+		  //	pthread_mutex_lock(&main_lock);
+		if(fail){
+
+		  go_on=0;
+		}
+		//  pthread_mutex_unlock(&main_lock);		  
 		  if(go_on){
 		move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
 		arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, k-move_stack);
@@ -3126,23 +3135,27 @@ static int p_vsearch(int depth, int alpha, int beta)
 		
 		    if(go_on){*/
 
-		  pthread_mutex_lock(&main_lock);
-		  if (local_score>alpha){
-		    best_score = local_score;
-		    best_move = move;
-		    alpha = local_score;
-		  }
 		  
-		  else if (local_score>best_score){
-		    best_score = local_score;
-		    best_move = move;   
+		  if ((local_score>alpha) || (local_score>best_score)){
+		    //		  pthread_mutex_lock(&main_lock);
+		    if (local_score>alpha){
+		      best_score = local_score;
+		      best_move = move;
+		      alpha = local_score;
+		    }
+		    
+		    else if (local_score>best_score){
+		      best_score = local_score;
+		      best_move = move;   
+		    }
+		    //pthread_mutex_unlock(&main_lock);		  
 		  }
-		  
+
 		  if (local_score>beta){
 		    fail=1;
 		    
 		  }
-		  pthread_mutex_unlock(&main_lock);
+
 		}//end go_on
 	
 		/*		if(go_on){
