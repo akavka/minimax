@@ -93,7 +93,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 3;                /* Maximum search depth */
+static int maxdepth = 5;                /* Maximum search depth */
 static int parallel_code=0;
 static int random_countdown=15;
 
