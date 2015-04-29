@@ -2927,10 +2927,6 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
         return best_score;
 }
 
-p_viteration(struct move* k, int depth, int alpha, int beta, int best_score, int best_move, int score, struct move *moves, int incheck, int proceed){
-
-}
-
 
 static int p_vsearch(int depth, int alpha, int beta)
 {
@@ -3042,8 +3038,6 @@ static int p_vsearch(int depth, int alpha, int beta)
 	       
 	//	for(k=move_sp; k>moves; k--){
 	for(k=moves+1; k<=move_sp; k++){
-
-
 	  //	while (move_sp > moves) {
                 int newdepth;
                 int move;
@@ -3077,36 +3071,33 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 
 		  /*TEMP this should be a deep copy of board*/
-		  p_unmake_move(p_board, arg_ball);
-		  free(move_stack_copy);
-		  free(arg_ball);
-		  free(p_board );
+                        p_unmake_move(p_board, arg_ball);
+			free(move_stack_copy);
+			free(arg_ball);
+			free(p_board );
 
 		/*TEMP used to prove that global variable isn't being touched.*/
-		  restore_global_variables();
+			restore_global_variables();
 			
-		  continue;
+			go_on=0;
                 }
 
 
-
+		if(go_on){
 		  newdepth = incheck ? depth : depth-1;
 		  if (newdepth <= 0) {
 		    
 		    /*TEMP this should be a deep copy of board*/
 		    
-		    score =  p_qsearch(-beta, -alpha, p_board, arg_ball);
+		    score = -p_qsearch(-beta, -alpha, p_board, arg_ball);
 		  } else {
 		    
 		    
 		    
 		  
 		    /*TEMP this should be deep copy of p_board*/
-		    score = - p_child_search(newdepth, -beta, -alpha, p_board, arg_ball);
-		    
+		    score = -p_child_search(newdepth, -beta, -alpha, p_board, arg_ball);
 		  }
-		  
-		  
 		  if (score < -29000) score++;    /* adjust for mate-in-n */
 		  
 		  
@@ -3120,34 +3111,31 @@ static int p_vsearch(int depth, int alpha, int beta)
 		  /*TEMP used to prove that global variable isn't being touched.*/
 		  restore_global_variables();
 		  
-		  
-		  
-		  if (score <= best_score) continue;
-		  
+		  if (score <= best_score)go_on=0;
+		}//end go_on
 		
 		
-		
+		if(go_on){
 		  best_score = score;
 		  best_move = move;
 		  
-		  if (score <= alpha) continue;
-		  
+		  if (score <= alpha) go_on=0;
+		}//end go_on
 		
-		
-		
+		if(go_on){
 		  alpha = score;
 		  
-		  if (score < beta) continue;
+		  if (score < beta) go_on=0;
+		}//end go_on
 		
-		
-		
+		if (go_on){
 		  k=move_sp+1;
-		//	k=moves;
-		//move_sp = moves; /* fail high: skip remaining moves */
-		
+		  //	k=moves;
+		  //move_sp = moves; /* fail high: skip remaining moves */
+		}//end go_on
         }
 	parallel_code=0;
-
+	
 	move_sp=moves;
 
 
