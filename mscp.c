@@ -38,7 +38,7 @@ char mscp_c_rcsid[] = "@(#)$Id: mscp.c,v 1.18 2003/12/14 15:12:12 marcelk Exp $"
 #include <time.h>
 //#include "cycle_timer.h"
 #include <cilk/cilk.h>
-
+#include <pthread.h>
 
 typedef unsigned char byte;
 #define INF 32000
@@ -2937,7 +2937,7 @@ static int p_vsearch(int depth, int alpha, int beta)
         int                             incheck = 0;
 	int                             proceed=1;
 	struct move *k;
-
+	int fail=0;
 
         /*SIMPLE we cut these variables when we don't use the hash table
        
@@ -3044,16 +3044,18 @@ static int p_vsearch(int depth, int alpha, int beta)
 		int go_on=1;
 		byte* p_board=(byte*) malloc(67*sizeof(byte));
 		int j=0;
+		int temp_score=0;
+		//Make local copies of global variables
 		struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
 		ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, k-move_stack);
-		
-		/*TEMP used to prove that global variable isn't being touched.*/
-		ruin_global_variables();
-		
-
 		for (j=0; j<67; j++){
 		  p_board[j]=board[j];
 		}
+
+		/*TEMP used to prove that global variable isn't being touched.*/
+		//		ruin_global_variables();
+		
+
 		
 
 		
@@ -3077,7 +3079,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 			free(p_board );
 
 		/*TEMP used to prove that global variable isn't being touched.*/
-			restore_global_variables();
+			//restore_global_variables();
 			
 			go_on=0;
                 }
@@ -3094,7 +3096,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		    
 		    
 		    
-		  
+		    
 		    /*TEMP this should be deep copy of p_board*/
 		    score = -p_child_search(newdepth, -beta, -alpha, p_board, arg_ball);
 		  }
@@ -3107,33 +3109,39 @@ static int p_vsearch(int depth, int alpha, int beta)
 		  free(move_stack_copy);
 		  free(arg_ball);
 		  free(p_board );
+		  /*}
+		
+		    if(go_on){*/
+		  if (score>alpha){
+		    best_score = score;
+		    best_move = move;
+		    alpha = score;
+		  }
 		  
-		  /*TEMP used to prove that global variable isn't being touched.*/
-		  restore_global_variables();
+		  else if (score>best_score){
+		    best_score = score;
+		    best_move = move;   
+		  }
 		  
-		  if (score <= best_score)go_on=0;
+		  if (score>beta){
+		    fail=1;
+		    
+		  }
+
 		}//end go_on
-		
-		
-		if(go_on){
-		  best_score = score;
-		  best_move = move;
-		  
-		  if (score <= alpha) go_on=0;
-		}//end go_on
-		
-		if(go_on){
-		  alpha = score;
+	
+		/*		if(go_on){
+
 		  
 		  if (score < beta) go_on=0;
 		}//end go_on
 		
-		if (go_on){
+		if (go_on){*/
 		  //TEMP: we're eliminating this optimization to be more cilk compliant
 		  //		  k=move_sp+1;
 		  //	k=moves;
 		  //move_sp = moves; /* fail high: skip remaining moves */
-		}//end go_on
+		//end go_on
         }
 	parallel_code=0;
 	
