@@ -2927,6 +2927,10 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
         return best_score;
 }
 
+p_viteration(struct move* k, int depth, int alpha, int beta, int best_score, int best_move, int score, struct move *moves, int incheck, int proceed){
+
+}
+
 
 static int p_vsearch(int depth, int alpha, int beta)
 {
@@ -3038,10 +3042,12 @@ static int p_vsearch(int depth, int alpha, int beta)
 	       
 	//	for(k=move_sp; k>moves; k--){
 	for(k=moves+1; k<=move_sp; k++){
+
+
 	  //	while (move_sp > moves) {
                 int newdepth;
                 int move;
-		
+		int go_on=1;
 		byte* p_board=(byte*) malloc(67*sizeof(byte));
 		int j=0;
 		struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
@@ -3071,58 +3077,74 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 
 		  /*TEMP this should be a deep copy of board*/
-                        p_unmake_move(p_board, arg_ball);
-			free(move_stack_copy);
-			free(arg_ball);
-			free(p_board );
+		  p_unmake_move(p_board, arg_ball);
+		  free(move_stack_copy);
+		  free(arg_ball);
+		  free(p_board );
 
 		/*TEMP used to prove that global variable isn't being touched.*/
-			restore_global_variables();
+		  restore_global_variables();
 			
-			continue;
+		  continue;
                 }
 
-                newdepth = incheck ? depth : depth-1;
-                if (newdepth <= 0) {
-
-		  /*TEMP this should be a deep copy of board*/
-
-		  score = -p_qsearch(-beta, -alpha, p_board, arg_ball);
-                } else {
 
 
+		  newdepth = incheck ? depth : depth-1;
+		  if (newdepth <= 0) {
+		    
+		    /*TEMP this should be a deep copy of board*/
+		    
+		    score =  p_qsearch(-beta, -alpha, p_board, arg_ball);
+		  } else {
+		    
+		    
+		    
+		  
+		    /*TEMP this should be deep copy of p_board*/
+		    score = - p_child_search(newdepth, -beta, -alpha, p_board, arg_ball);
+		    
+		  }
 		  
 		  
-		  /*TEMP this should be deep copy of p_board*/
-		  score = -p_child_search(newdepth, -beta, -alpha, p_board, arg_ball);
-                }
-                if (score < -29000) score++;    /* adjust for mate-in-n */
-
-
+		  if (score < -29000) score++;    /* adjust for mate-in-n */
+		  
+		  
 		  /*TEMP this should be a deep copy of board*/
-                p_unmake_move(p_board, arg_ball);
+		  p_unmake_move(p_board, arg_ball);
+		  
+		  free(move_stack_copy);
+		  free(arg_ball);
+		  free(p_board );
+		  
+		  /*TEMP used to prove that global variable isn't being touched.*/
+		  restore_global_variables();
+		  
+		  
+		  
+		  if (score <= best_score) continue;
+		  
 		
-		free(move_stack_copy);
-		free(arg_ball);
-		free(p_board );
-
-		/*TEMP used to prove that global variable isn't being touched.*/
-		restore_global_variables();
 		
-		if (score <= best_score) continue;
-                best_score = score;
-                best_move = move;
-
-                if (score <= alpha) continue;
-                alpha = score;
-
-                if (score < beta) continue;
-
-
 		
-			k=move_sp+1;
-			//	k=moves;
-			//move_sp = moves; /* fail high: skip remaining moves */
+		  best_score = score;
+		  best_move = move;
+		  
+		  if (score <= alpha) continue;
+		  
+		
+		
+		
+		  alpha = score;
+		  
+		  if (score < beta) continue;
+		
+		
+		
+		  k=move_sp+1;
+		//	k=moves;
+		//move_sp = moves; /* fail high: skip remaining moves */
+		
         }
 	parallel_code=0;
 
