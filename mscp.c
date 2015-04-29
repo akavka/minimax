@@ -2938,6 +2938,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 	int                             proceed=1;
 	struct move *k;
 	int fail=0;
+	pthread_mutex_t main_lock;
 
         /*SIMPLE we cut these variables when we don't use the hash table
        
@@ -2975,6 +2976,7 @@ static int p_vsearch(int depth, int alpha, int beta)
         }
 
         history[best_move] |= PRESCORE_HASHMOVE;*/
+	pthread_mutex_init(&main_lock, NULL);
         incheck = enemy->attack[friend->king];
 
         /*
@@ -3044,10 +3046,20 @@ static int p_vsearch(int depth, int alpha, int beta)
 		int go_on=1;
 		byte* p_board=(byte*) malloc(67*sizeof(byte));
 		int j=0;
-		int temp_score=0;
+		int local_alpha=0;
 		//Make local copies of global variables
-		struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
-		ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, k-move_stack);
+		struct move* move_stack_copy;
+		ball*arg_ball;
+		
+
+		  pthread_mutex_lock(&main_lock);
+		  local_alpha=alpha;
+		  if(fail)go_on=0;
+		  pthread_mutex_unlock(&main_lock);
+
+		  if(go_on){
+		move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
+		arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, k-move_stack);
 		for (j=0; j<67; j++){
 		  p_board[j]=board[j];
 		}
@@ -3083,7 +3095,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 			
 			go_on=0;
                 }
-
+		  }
 
 		if(go_on){
 		  newdepth = incheck ? depth : depth-1;
@@ -3091,14 +3103,14 @@ static int p_vsearch(int depth, int alpha, int beta)
 		    
 		    /*TEMP this should be a deep copy of board*/
 		    
-		    score = -p_qsearch(-beta, -alpha, p_board, arg_ball);
+		    score = -p_qsearch(-beta, -local_alpha, p_board, arg_ball);
 		  } else {
 		    
 		    
 		    
 		    
 		    /*TEMP this should be deep copy of p_board*/
-		    score = -p_child_search(newdepth, -beta, -alpha, p_board, arg_ball);
+		    score = -p_child_search(newdepth, -beta, -local_alpha, p_board, arg_ball);
 		  }
 		  if (score < -29000) score++;    /* adjust for mate-in-n */
 		  
@@ -3112,6 +3124,8 @@ static int p_vsearch(int depth, int alpha, int beta)
 		  /*}
 		
 		    if(go_on){*/
+
+		  pthread_mutex_lock(&main_lock);
 		  if (score>alpha){
 		    best_score = score;
 		    best_move = move;
@@ -3127,7 +3141,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		    fail=1;
 		    
 		  }
-
+		  pthread_mutex_unlock(&main_lock);
 		}//end go_on
 	
 		/*		if(go_on){
