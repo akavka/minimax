@@ -93,7 +93,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 3;                /* Maximum search depth */
+static int maxdepth = 5;                /* Maximum search depth */
 static int parallel_code=0;
 static int random_countdown=15;
 
@@ -3047,6 +3047,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 		byte* p_board=(byte*) malloc(67*sizeof(byte));
 		int j=0;
 		int local_alpha=0;
+		int local_score;
 		//Make local copies of global variables
 		struct move* move_stack_copy;
 		ball*arg_ball;
@@ -3103,16 +3104,16 @@ static int p_vsearch(int depth, int alpha, int beta)
 		    
 		    /*TEMP this should be a deep copy of board*/
 		    
-		    score = -p_qsearch(-beta, -local_alpha, p_board, arg_ball);
+		    local_score = -p_qsearch(-beta, -local_alpha, p_board, arg_ball);
 		  } else {
 		    
 		    
 		    
 		    
 		    /*TEMP this should be deep copy of p_board*/
-		    score = -p_child_search(newdepth, -beta, -local_alpha, p_board, arg_ball);
+		    local_score = -p_child_search(newdepth, -beta, -local_alpha, p_board, arg_ball);
 		  }
-		  if (score < -29000) score++;    /* adjust for mate-in-n */
+		  if (local_score < -29000) local_score++;    /* adjust for mate-in-n */
 		  
 		  
 		  /*TEMP this should be a deep copy of board*/
@@ -3120,24 +3121,24 @@ static int p_vsearch(int depth, int alpha, int beta)
 		  
 		  free(move_stack_copy);
 		  free(arg_ball);
-		  free(p_board );
+		  free(p_board);
 		  /*}
 		
 		    if(go_on){*/
 
 		  pthread_mutex_lock(&main_lock);
-		  if (score>alpha){
-		    best_score = score;
+		  if (local_score>alpha){
+		    best_score = local_score;
 		    best_move = move;
-		    alpha = score;
+		    alpha = local_score;
 		  }
 		  
-		  else if (score>best_score){
-		    best_score = score;
+		  else if (local_score>best_score){
+		    best_score = local_score;
 		    best_move = move;   
 		  }
 		  
-		  if (score>beta){
+		  if (local_score>beta){
 		    fail=1;
 		    
 		  }
