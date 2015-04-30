@@ -3230,7 +3230,8 @@ static int p_root_search(int maxdepth)
   int             alpha, beta;
   unsigned long   node;
   struct move     *m;
-  
+  pthread_mutex_t main_lock;
+  pthread_mutex_init (&main_lock, NULL);
   
   nodes = 0;
   compute_piece_square_tables();
@@ -3249,7 +3250,7 @@ static int p_root_search(int maxdepth)
   
   for (depth = 1; depth <= maxdepth; depth++) {
     int proceed=1;
-
+    
     m = move_stack;
     best_score = INT_MIN;
     
@@ -3265,7 +3266,6 @@ static int p_root_search(int maxdepth)
       if (friend->attack[enemy->king] != 0) { /* illegal? */
 
 	unmake_move();
-	//m++;
 	*m = *--move_sp; /* drop this move */
 	continue;
       }
@@ -3316,11 +3316,13 @@ static int p_root_search(int maxdepth)
       proceed=0;		
     }
     
-    
+
     parallel_code=1;
-    for (;m < move_sp;) {
+    for (m=move_stack+1;m < move_sp;m++) {
+      int leave_loop=0;
       /*      byte*p_board=board;*/
-     
+      while(leave_loop==0){
+	leave_loop=1;
       struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
       ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, (move_sp-move_stack));
       arg_ball->move_sp=move_sp;      
@@ -3346,8 +3348,9 @@ static int p_root_search(int maxdepth)
 	/*TEMP this needs to be a deep copy of board.*/
 	p_unmake_move(p_board, arg_ball);
 
-	*m = *--(arg_ball->move_sp); /* drop this move */
-	
+	//	*m = *--(arg_ball->move_sp); /* drop this move */
+	//m--;	
+
 	move_sp=arg_ball->move_sp;
 	free(move_stack_copy);
 	free(p_board );
@@ -3383,20 +3386,27 @@ static int p_root_search(int maxdepth)
       free(move_stack_copy);
       free(arg_ball);
       free(p_board );
+
+
       
       /*Fix window if it was too narrow.*/
       if (score>=beta || (score<=alpha && m==move_stack)) {
+	pthread_mutex_lock(& main_lock);
+	if (score>=beta || (score<=alpha && m==move_stack)) {
 	alpha = -INF;
 	beta = +INF;
-	
-	continue; /* re-search this move */
+	}
+	pthread_mutex_unlock(& main_lock);
+	//	m--;
+	leave_loop=0;
+	continue; // re-search this move 
       }
       
       /*I don't know what this is*/
       m->prescore = ~squeeze(nodes-node);
       node = nodes;
       
-      
+      pthread_mutex_lock(& main_lock);
       if (score > best_score) {
 	struct move tmp;
 	
@@ -3409,8 +3419,9 @@ static int p_root_search(int maxdepth)
 	*move_stack = *m;
 	*m = tmp;
       }
-      m++
-      /* continue with next move */
+      pthread_mutex_unlock(& main_lock);
+      }//while proceed
+       /* continue with next move */
     }
     parallel_code=0;
     
