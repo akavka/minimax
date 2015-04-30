@@ -93,7 +93,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 5;                /* Maximum search depth */
+static int maxdepth = 3;                /* Maximum search depth */
 static int parallel_code=0;
 static int random_countdown=15;
 
@@ -3249,7 +3249,7 @@ static int p_root_search(int maxdepth)
   
   for (depth = 1; depth <= maxdepth; depth++) {
     int proceed=1;
-    
+
     m = move_stack;
     best_score = INT_MIN;
     
@@ -3265,6 +3265,7 @@ static int p_root_search(int maxdepth)
       if (friend->attack[enemy->king] != 0) { /* illegal? */
 
 	unmake_move();
+	//m++;
 	*m = *--move_sp; /* drop this move */
 	continue;
       }
@@ -3319,7 +3320,7 @@ static int p_root_search(int maxdepth)
     parallel_code=1;
     for (;m < move_sp;) {
       /*      byte*p_board=board;*/
-      
+     
       struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
       ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, (move_sp-move_stack));
       arg_ball->move_sp=move_sp;      
@@ -3408,8 +3409,8 @@ static int p_root_search(int maxdepth)
 	*move_stack = *m;
 	*m = tmp;
       }
-
-      m++; /* continue with next move */
+      m++
+      /* continue with next move */
     }
     parallel_code=0;
     
