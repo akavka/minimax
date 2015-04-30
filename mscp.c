@@ -2726,6 +2726,65 @@ static ball* setup(struct side * arg_white, struct side* arg_black, struct side*
   return result;
 }
 
+static void prelim_setup(ball*result, struct side * arg_white, struct side* arg_black, struct side* arg_friend, struct side* arg_enemy, int arg_ply, unsigned short arg_caps, struct move* copy_move_stack, int offset){
+  
+  /*  result->white=(*arg_white);
+  result->black=(*arg_black);
+  result->ply=arg_ply;
+  result->caps=caps;*/
+  //result->ply=ply;
+  /*  memcpy(copy_move_stack, move_stack, 1024*sizeof(struct move));
+  result->move_sp=copy_move_stack+offset;
+  result->undo_sp=(signed char*) malloc(6*1024*sizeof(signed char));
+
+
+  if(arg_black==arg_friend &&arg_white==arg_enemy){
+    
+    result->enemy=&(result->white);
+    result->friend=&(result->black);
+  }
+  else if(arg_white==arg_friend &&arg_black==arg_enemy){
+    
+    result->enemy=&(result->black);
+    result->friend=&(result->white);
+  }
+  else{
+    
+    } 
+
+    return result;*/
+}
+
+static void finish_setup(ball* result, struct side * arg_white, struct side* arg_black, struct side* arg_friend, struct side* arg_enemy, int arg_ply, unsigned short arg_caps, struct move* copy_move_stack, int offset){
+
+  result->white=(*arg_white);
+  result->black=(*arg_black);
+  result->ply=arg_ply;
+  result->caps=caps;
+  result->ply=ply;
+  memcpy(copy_move_stack, move_stack, 1024*sizeof(struct move));
+  result->move_sp=copy_move_stack+offset;
+  result->undo_sp=(signed char*) malloc(6*1024*sizeof(signed char));
+  
+
+  if(arg_black==arg_friend &&arg_white==arg_enemy){
+    
+    result->enemy=&(result->white);
+    result->friend=&(result->black);
+  }
+  else if(arg_white==arg_friend &&arg_black==arg_enemy){
+    
+    result->enemy=&(result->black);
+    result->friend=&(result->white);
+  }
+  else{
+    
+    } 
+
+
+}
+
+
 
 static void ruin_global_variables(){
   move_sp+=999;
@@ -3322,17 +3381,22 @@ pthread_mutex_init (&super_lock, NULL);
 
     parallel_code=1;
     cilk_for (m=move_stack+1;m < move_sp;m++) {
+      pthread_mutex_lock (&super_lock);		
       int leave_loop=0;
       int local_score;
       int local_alpha=alpha;
       /*      byte*p_board=board;*/
-
+	
       while(leave_loop==0){
 
 	leave_loop=1;
 	struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
-pthread_mutex_lock (&super_lock);		
-	ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, (move_sp-move_stack));
+
+	//ball*arg_ball=(ball*) malloc(sizeof(ball));
+	//prelim_setup(arg_ball, &white, &black, friend, enemy, ply, caps, move_stack_copy, (move_sp-move_stack));
+
+	//	finish_setup(arg_ball, &white, &black, friend, enemy, ply, caps, move_stack_copy, (move_sp-move_stack));
+	ball* arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, (move_sp-move_stack));
 	arg_ball->move_sp=move_sp;
 
 	int j=0;
@@ -3349,7 +3413,7 @@ pthread_mutex_lock (&super_lock);
 	/*TEMP this should be a deep copy of board*/
 	p_make_move(m->move, p_board, arg_ball);
 	
-      /*TEMP this needs to be a deep copy of board.*/
+	/*TEMP this needs to be a deep copy of board.*/
 	p_compute_attacks(p_board, arg_ball);
 	if (arg_ball->friend->attack[arg_ball->enemy->king] != 0) { /* illegal? */
 	
@@ -3363,7 +3427,7 @@ pthread_mutex_lock (&super_lock);
 	free(move_stack_copy);
 	free(p_board );
 	free(arg_ball);
-	pthread_mutex_unlock (&super_lock);            	
+	      
 	//restore_global_variables();
 	continue;
       }
@@ -3388,7 +3452,7 @@ pthread_mutex_lock (&super_lock);
 	local_score = -p_qsearch(-beta, -local_alpha, p_board, arg_ball);
       }
 
-pthread_mutex_unlock (&super_lock);            
+
       /*TEMP  This needs to be deep copy of board*/
       p_unmake_move(p_board, arg_ball);
       
@@ -3407,7 +3471,7 @@ pthread_mutex_unlock (&super_lock);
 	alpha = -INF;
 	beta = +INF;
 	}
-	pthread_mutex_unlock(& main_lock);
+	pthread_mutex_unlock(& main_lock);      
 	//	m--;
 	leave_loop=0;
 
@@ -3436,10 +3500,11 @@ pthread_mutex_unlock (&super_lock);
       }
       pthread_mutex_unlock(& main_lock);
 
-
+      
       }//while proceed
-
+pthread_mutex_unlock (&super_lock);            
        /* continue with next move */
+
     }
     parallel_code=0;
     
