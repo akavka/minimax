@@ -3137,18 +3137,20 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 		  
 		  if ((local_score>alpha) || (local_score>best_score)){
-		    //		  pthread_mutex_lock(&main_lock);
+		    			  	pthread_mutex_lock(&main_lock);
 		    if (local_score>alpha){
+		      usleep(1);
 		      best_score = local_score;
 		      best_move = move;
 		      alpha = local_score;
 		    }
 		    
 		    else if (local_score>best_score){
+		      usleep(1);
 		      best_score = local_score;
 		      best_move = move;   
 		    }
-		    //pthread_mutex_unlock(&main_lock);		  
+		    	pthread_mutex_unlock(&main_lock);
 		  }
 
 		  if (local_score>beta){
