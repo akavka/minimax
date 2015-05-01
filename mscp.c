@@ -1850,13 +1850,15 @@ static int root_search(int maxdepth)
                         m->prescore = ~squeeze(nodes-node);
                         node = nodes;
 
-			if(ply==43 && depth==1){
+			/*			if(ply==43 && depth==1){
 			printf("DEBUG %5lu %3d %+1.2f ", nodes, depth, score / 100.0);
 			print_move_san(m->move);
 			puts("");
-			}
+			}*/
 
-                        if (score > best_score) {
+
+                        if ((score > best_score))) {
+			  //                        if ((score > best_score) || (score==best_score && m->move>move)) {
                                 struct move tmp;
 
                                 best_score = score;
@@ -3307,8 +3309,8 @@ pthread_mutex_init (&super_lock, NULL);
       m->prescore = ~squeeze(nodes-node);
       node = nodes;
       
-      
-      if (score > best_score) {
+      if ((score > best_score)) {
+	      //      if ((score > best_score) || (score==best_score && m->move>move)) {
 	struct move tmp;
 	
 	best_score = score;
@@ -3326,8 +3328,8 @@ pthread_mutex_init (&super_lock, NULL);
     
 
     parallel_code=1;
-        for(m=move_sp-1; m>=move_stack; m--){
-    //for (m=move_stack+1;m < move_sp;m++) {
+    //        for(m=move_sp-1; m>=move_stack; m--){
+    for (m=move_stack+1;m < move_sp;m++) {
       //fprintf(stderr,"move_stack was %d, m was %d and move_sp was %d\n", move_stack, m, move_sp);
       pthread_mutex_lock (&super_lock);
       
@@ -3429,14 +3431,15 @@ pthread_mutex_init (&super_lock, NULL);
 	node = nodes;*/
       pthread_mutex_unlock(& main_lock);      
 
-      if((ply==43 ) && depth==1){
+      /*if((ply==43 ) && depth==1){
 	  printf("DEBUG %5lu %3d %+1.2f ", nodes, depth, local_score / 100.0);
 	  print_move_san(m->move);
 	  puts("");
-	  }
+	  }*/
     
       pthread_mutex_lock(& main_lock);
-      if (local_score > best_score) {
+      if ((local_score > best_score)) {
+	//      if ((local_score > best_score)|| (local_score==best_score && m->move>move)) {
 	struct move tmp;
 	
 	best_score = local_score;
