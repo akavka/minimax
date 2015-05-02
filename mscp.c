@@ -1,5 +1,7 @@
+
+
 /*----------------------------------------------------------------------+
-Adam's parallel chess program.
+Adam's arallel chess program.
 Created 1 April 2015
 Updated: May 2015
 This code takes Marcel's Simple Chess Program and improves it by adding
@@ -1641,7 +1643,7 @@ if (parallel_code){
                 }
                 alpha = score;
 
-                if (score <= beta) {
+                if (score < beta) {
                         continue;
                 }
 				move_sp = moves; /* fail high: skip remaining moves */
@@ -1741,7 +1743,7 @@ if (parallel_code){
                 if (score <= alpha) continue;
                 alpha = score;
 
-                if (score <= beta) continue;
+                if (score < beta) continue;
 
 		                move_sp = moves; /* fail high: skip remaining moves */
         }
@@ -1795,7 +1797,6 @@ static int root_search(int maxdepth)
         int             alpha, beta;
         unsigned long   node;
         struct move     *m;
-	int counter=0;
 
         nodes = 0;
         compute_piece_square_tables();
@@ -1831,16 +1832,7 @@ static int root_search(int maxdepth)
 
 			/*do normal search. Or if end of depth, Q-Search*/
                         if (depth-1 > 0) {
-			  
-			  score = -search(depth-1, -beta, -alpha);
-			  if(ply==45 && depth==3){
-			    printf("A Score was %f, move was %d, alpha was %d, beta was %d best was %d", score / 100.0, m->move, alpha, beta, best_score);
-			  //			print_move_san(m->move);
-			puts("");
-			counter++;
-			
-			}
-
+                                score = -search(depth-1, -beta, -alpha);
                         } else {
                                 score = -qsearch(-beta, -alpha);
                         }
@@ -1848,7 +1840,7 @@ static int root_search(int maxdepth)
 
 
 			/*Fix window if it was too narrow.*/
-                        if (score>=beta-1 || (score<=alpha && m==move_stack)) {
+                        if (score>=beta || (score<=alpha && m==move_stack)) {
                                 alpha = -INF;
                                 beta = +INF;
                                 continue; /* re-search this move */
@@ -1858,15 +1850,13 @@ static int root_search(int maxdepth)
                         m->prescore = ~squeeze(nodes-node);
                         node = nodes;
 
-						if(ply==44 && depth==3){
-			  printf("DEBUG %d %5lu %3d %+1.2f %d ", counter,nodes, depth, score / 100.0, m->move);
-			  //			print_move_san(m->move);
+			/*			if(ply==43 && depth==1){
+			printf("DEBUG %5lu %3d %+1.2f ", nodes, depth, score / 100.0);
+			print_move_san(m->move);
 			puts("");
-			
-			}
+			}*/
 
-			//			if ((score > best_score)) {
-			  if ((score > best_score) || ((score==best_score) && (m->move>move))) {
+                        if (score > best_score) {
                                 struct move tmp;
 
                                 best_score = score;
@@ -2808,7 +2798,7 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball *arg_ball)
                 }
                 alpha = score;
 
-                if (score <= beta) {
+                if (score < beta) {
                         continue;
                 }
 		arg_ball->move_sp = moves; /* fail high: skip remaining moves */
@@ -2909,7 +2899,7 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
                 if (score <= alpha) continue;
                 alpha = score;
 
-                if (score <= beta) continue;
+                if (score < beta) continue;
 
 		arg_ball->move_sp = moves; /* fail high: skip remaining moves */
         }
@@ -3040,7 +3030,7 @@ static int p_vsearch(int depth, int alpha, int beta)
                 if (score <= alpha) continue;
                 alpha = score;
 
-                if (score <= beta) continue;
+                if (score < beta) continue;
 
 		                move_sp = moves; /* fail high: skip remaining moves */
 		
@@ -3246,7 +3236,6 @@ static int p_root_search(int maxdepth)
   int             alpha, beta;
   unsigned long   node;
   struct move     *m;
-  int counter=0;
   pthread_mutex_t main_lock;
   pthread_mutex_t super_lock;
   pthread_mutex_init (&main_lock, NULL);
@@ -3300,14 +3289,6 @@ pthread_mutex_init (&super_lock, NULL);
 	
 	/*TEMP change*/
 	score = -p_vsearch(depth-1, -beta, -alpha);
-
-	if((ply==45 ) && depth==3){
-	printf("B SCORE was %f   %d alpha was %d beta was %d",  score / 100.0, m->move, alpha, beta);
-	
-	puts("");
-	counter++;
-	}
-
       } else {
 	
 	score = -qsearch(-beta, -alpha);
@@ -3316,7 +3297,7 @@ pthread_mutex_init (&super_lock, NULL);
       
       
       /*Fix window if it was too narrow.*/
-      if (score>=beta-1 || (score<=alpha && m==move_stack)) {
+      if (score>=beta || (score<=alpha && m==move_stack)) {
 	alpha = -INF;
 	beta = +INF;
 	continue; /* re-search this move */
@@ -3326,16 +3307,8 @@ pthread_mutex_init (&super_lock, NULL);
       m->prescore = ~squeeze(nodes-node);
       node = nodes;
       
-
-      if((ply==44 ) && depth==3){
-	printf("A DEBUG %d move_sp was %d, M was %d, move_stack was %d\n%5lu %3d %+1.2f %d ", counter, move_sp, m, move_stack,nodes, depth, score / 100.0, m->move);
-	
-	puts("");
-	counter++;
-	}
       
-      if ((score > best_score) || ((score==best_score) && (m->move>move))) {      
-      //      if (score > best_score) {
+      if (score > best_score) {
 	struct move tmp;
 	
 	best_score = score;
@@ -3351,10 +3324,10 @@ pthread_mutex_init (&super_lock, NULL);
       proceed=0;		
     }
     
-    
+
     parallel_code=1;
-            for(m=move_sp-1; m>=move_stack; m--){
-    //for (;m < move_sp;m++) {
+    //        for(m=move_sp-1; m>=move_stack; m--){
+    for (m=move_stack+1;m < move_sp;m++) {
       //fprintf(stderr,"move_stack was %d, m was %d and move_sp was %d\n", move_stack, m, move_sp);
       pthread_mutex_lock (&super_lock);
       
@@ -3416,15 +3389,6 @@ pthread_mutex_init (&super_lock, NULL);
 	/*TEMP  This needs to be deep copy of board*/
 	
 	local_score = -p_child_search(depth-1, -beta, -local_alpha, p_board, arg_ball);
-
-	if((arg_ball->ply==45 ) && depth==3){
-	printf("C SCORE was %f  %d alpha was %d beta was %d",  local_score / 100.0, m->move, alpha, beta);
-	
-	puts("");
-	counter++;
-	}
-
-
       } else {
 	
 
@@ -3445,9 +3409,9 @@ pthread_mutex_init (&super_lock, NULL);
 
       
       /*Fix window if it was too narrow.*/
-      if (local_score>=beta-1 || (local_score<=alpha && m==move_stack)) {
+      if (local_score>=beta || (local_score<=alpha && m==move_stack)) {
 	pthread_mutex_lock(& main_lock);
-	if (local_score>=beta-1 || (local_score<=alpha && m==move_stack)) {
+	if (local_score>=beta || (local_score<=alpha && m==move_stack)) {
 	alpha = -INF;
 	beta = +INF;
 	}
@@ -3465,18 +3429,14 @@ pthread_mutex_init (&super_lock, NULL);
 	node = nodes;*/
       pthread_mutex_unlock(& main_lock);      
 
-      if((ply==44 ) && depth==3){
-	      //	printf("DEBUG %5lu %3d %+1.2f %d", nodes, depth, local_score / 100.0, m->move);
-	      printf("B DEBUG %d move_sp was %d, M was %d, move_stack was %d\n%5lu %3d %+1.2f %d ", counter, move_sp, m, move_stack,nodes, depth, local_score / 100.0, m->move);
-	
-	puts("");
-	counter++;
-	}
+      /*      if((ply==43 ) && depth==1){
+	  printf("DEBUG %5lu %3d %+1.2f ", nodes, depth, local_score / 100.0);
+	  print_move_san(m->move);
+	  puts("");
+	  }*/
     
       pthread_mutex_lock(& main_lock);
-      if ((local_score > best_score) || ((local_score==best_score) && (m->move>move))) {
-   
-	//  if (local_score > best_score) {
+      if (local_score > best_score) {
 	struct move tmp;
 	
 	best_score = local_score;
@@ -3484,9 +3444,9 @@ pthread_mutex_init (&super_lock, NULL);
 	beta = local_score + 1;
 	move = m->move;
 	
-	//	tmp = *move_stack; /* swap with top of list */
-	//*move_stack = *m;
-	//*m = tmp;
+	tmp = *move_stack; /* swap with top of list */
+	*move_stack = *m;
+	*m = tmp;
       }
       pthread_mutex_unlock(& main_lock);
 
