@@ -1,5 +1,3 @@
-
-
 /*----------------------------------------------------------------------+
 Adam's parallel chess program.
 Created 1 April 2015
@@ -1835,8 +1833,8 @@ static int root_search(int maxdepth)
                         if (depth-1 > 0) {
 			  
 			  score = -search(depth-1, -beta, -alpha);
-			  /*if(ply==16 && depth==3){
-			  printf("A Score was %f, move was %d, alpha was %d, beta was %d ", score / 100.0, m->move, alpha, beta);
+			  /*if(ply==23 && depth==3){
+			    printf("A Score was %f, move was %d, alpha was %d, beta was %d best was %d", score / 100.0, m->move, alpha, beta, best_score);
 			  //			print_move_san(m->move);
 			puts("");
 			counter++;
@@ -1850,7 +1848,7 @@ static int root_search(int maxdepth)
 
 
 			/*Fix window if it was too narrow.*/
-                        if (score>=beta || (score<=alpha && m==move_stack)) {
+                        if (score>=beta-1 || (score<=alpha && m==move_stack)) {
                                 alpha = -INF;
                                 beta = +INF;
                                 continue; /* re-search this move */
@@ -1860,7 +1858,7 @@ static int root_search(int maxdepth)
                         m->prescore = ~squeeze(nodes-node);
                         node = nodes;
 
-			/*			if(ply==15 && depth==3){
+			/*			if(ply==22 && depth==3){
 			  printf("DEBUG %d %5lu %3d %+1.2f %d ", counter,nodes, depth, score / 100.0, m->move);
 			  //			print_move_san(m->move);
 			puts("");
@@ -3303,7 +3301,7 @@ pthread_mutex_init (&super_lock, NULL);
 	/*TEMP change*/
 	score = -p_vsearch(depth-1, -beta, -alpha);
 
-	/*      if((ply==16 ) && depth==3){
+	/*if((ply==23 ) && depth==3){
 	printf("B SCORE was %f   %d alpha was %d beta was %d",  score / 100.0, m->move, alpha, beta);
 	
 	puts("");
@@ -3318,7 +3316,7 @@ pthread_mutex_init (&super_lock, NULL);
       
       
       /*Fix window if it was too narrow.*/
-      if (score>=beta || (score<=alpha && m==move_stack)) {
+      if (score>=beta-1 || (score<=alpha && m==move_stack)) {
 	alpha = -INF;
 	beta = +INF;
 	continue; /* re-search this move */
@@ -3329,7 +3327,7 @@ pthread_mutex_init (&super_lock, NULL);
       node = nodes;
       
 
-      /*      if((ply==15 ) && depth==3){
+      /*            if((ply==22 ) && depth==3){
 	printf("A DEBUG %d move_sp was %d, M was %d, move_stack was %d\n%5lu %3d %+1.2f %d ", counter, move_sp, m, move_stack,nodes, depth, score / 100.0, m->move);
 	
 	puts("");
@@ -3419,7 +3417,7 @@ pthread_mutex_init (&super_lock, NULL);
 	
 	local_score = -p_child_search(depth-1, -beta, -local_alpha, p_board, arg_ball);
 
-	/*if((arg_ball->ply==16 ) && depth==3){
+	/*if((arg_ball->ply==23 ) && depth==3){
 	printf("C SCORE was %f  %d alpha was %d beta was %d",  local_score / 100.0, m->move, alpha, beta);
 	
 	puts("");
@@ -3447,9 +3445,9 @@ pthread_mutex_init (&super_lock, NULL);
 
       
       /*Fix window if it was too narrow.*/
-      if (local_score>=beta || (local_score<=alpha && m==move_stack)) {
+      if (local_score>=beta-1 || (local_score<=alpha && m==move_stack)) {
 	pthread_mutex_lock(& main_lock);
-	if (local_score>=beta || (local_score<=alpha && m==move_stack)) {
+	if (local_score>=beta-1 || (local_score<=alpha && m==move_stack)) {
 	alpha = -INF;
 	beta = +INF;
 	}
@@ -3467,7 +3465,7 @@ pthread_mutex_init (&super_lock, NULL);
 	node = nodes;*/
       pthread_mutex_unlock(& main_lock);      
 
-      /*            if((ply==15 ) && depth==3){
+      /*                  if((ply==22 ) && depth==3){
 	      //	printf("DEBUG %5lu %3d %+1.2f %d", nodes, depth, local_score / 100.0, m->move);
 	      printf("B DEBUG %d move_sp was %d, M was %d, move_stack was %d\n%5lu %3d %+1.2f %d ", counter, move_sp, m, move_stack,nodes, depth, local_score / 100.0, m->move);
 	
@@ -3486,9 +3484,9 @@ pthread_mutex_init (&super_lock, NULL);
 	beta = local_score + 1;
 	move = m->move;
 	
-	tmp = *move_stack; /* swap with top of list */
-	*move_stack = *m;
-	*m = tmp;
+	//	tmp = *move_stack; /* swap with top of list */
+	//*move_stack = *m;
+	//*m = tmp;
       }
       pthread_mutex_unlock(& main_lock);
 
