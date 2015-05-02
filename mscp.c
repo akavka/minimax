@@ -1833,13 +1833,13 @@ static int root_search(int maxdepth)
                         if (depth-1 > 0) {
 			  
 			  score = -search(depth-1, -beta, -alpha);
-			  /*if(ply==23 && depth==3){
+			  if(ply==45 && depth==3){
 			    printf("A Score was %f, move was %d, alpha was %d, beta was %d best was %d", score / 100.0, m->move, alpha, beta, best_score);
 			  //			print_move_san(m->move);
 			puts("");
 			counter++;
 			
-			}*/
+			}
 
                         } else {
                                 score = -qsearch(-beta, -alpha);
@@ -1858,12 +1858,12 @@ static int root_search(int maxdepth)
                         m->prescore = ~squeeze(nodes-node);
                         node = nodes;
 
-			/*			if(ply==22 && depth==3){
+						if(ply==44 && depth==3){
 			  printf("DEBUG %d %5lu %3d %+1.2f %d ", counter,nodes, depth, score / 100.0, m->move);
 			  //			print_move_san(m->move);
 			puts("");
 			
-			}*/
+			}
 
 			//			if ((score > best_score)) {
 			  if ((score > best_score) || ((score==best_score) && (m->move>move))) {
@@ -3301,12 +3301,12 @@ pthread_mutex_init (&super_lock, NULL);
 	/*TEMP change*/
 	score = -p_vsearch(depth-1, -beta, -alpha);
 
-	/*if((ply==23 ) && depth==3){
+	if((ply==45 ) && depth==3){
 	printf("B SCORE was %f   %d alpha was %d beta was %d",  score / 100.0, m->move, alpha, beta);
 	
 	puts("");
 	counter++;
-	}*/
+	}
 
       } else {
 	
@@ -3327,12 +3327,12 @@ pthread_mutex_init (&super_lock, NULL);
       node = nodes;
       
 
-      /*            if((ply==22 ) && depth==3){
+      if((ply==44 ) && depth==3){
 	printf("A DEBUG %d move_sp was %d, M was %d, move_stack was %d\n%5lu %3d %+1.2f %d ", counter, move_sp, m, move_stack,nodes, depth, score / 100.0, m->move);
 	
 	puts("");
 	counter++;
-	}*/
+	}
       
       if ((score > best_score) || ((score==best_score) && (m->move>move))) {      
       //      if (score > best_score) {
@@ -3417,12 +3417,12 @@ pthread_mutex_init (&super_lock, NULL);
 	
 	local_score = -p_child_search(depth-1, -beta, -local_alpha, p_board, arg_ball);
 
-	/*if((arg_ball->ply==23 ) && depth==3){
+	if((arg_ball->ply==45 ) && depth==3){
 	printf("C SCORE was %f  %d alpha was %d beta was %d",  local_score / 100.0, m->move, alpha, beta);
 	
 	puts("");
 	counter++;
-	}*/
+	}
 
 
       } else {
@@ -3465,13 +3465,13 @@ pthread_mutex_init (&super_lock, NULL);
 	node = nodes;*/
       pthread_mutex_unlock(& main_lock);      
 
-      /*                  if((ply==22 ) && depth==3){
+      if((ply==44 ) && depth==3){
 	      //	printf("DEBUG %5lu %3d %+1.2f %d", nodes, depth, local_score / 100.0, m->move);
 	      printf("B DEBUG %d move_sp was %d, M was %d, move_stack was %d\n%5lu %3d %+1.2f %d ", counter, move_sp, m, move_stack,nodes, depth, local_score / 100.0, m->move);
 	
 	puts("");
 	counter++;
-	}*/
+	}
     
       pthread_mutex_lock(& main_lock);
       if ((local_score > best_score) || ((local_score==best_score) && (m->move>move))) {
