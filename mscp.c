@@ -93,7 +93,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 3;                /* Maximum search depth */
+static int maxdepth = 5;                /* Maximum search depth */
 static int parallel_code=0;
 #define RANDOM_COUNTDOWN_START 15
 static int random_countdown=RANDOM_COUNTDOWN_START;
@@ -3246,8 +3246,8 @@ static int p_root_search(int maxdepth)
   pthread_mutex_t super_lock;
   int num_moves=0;
   pthread_mutex_init (&main_lock, NULL);
-  pthread_mutex_init (&super_lock, NULL);
-  
+
+pthread_mutex_init (&super_lock, NULL);  
   nodes = 0;
   compute_piece_square_tables();
   
@@ -3346,45 +3346,42 @@ static int p_root_search(int maxdepth)
     //for(m=move_sp-1; m>=move_stack +1; m--){
       cilk_for (m=move_stack+1;m < move_sp;m++) {
       //fprintf(stderr,"move_stack was %d, m was %d and move_sp was %d\n", move_stack, m, move_sp);
-	pthread_mutex_lock (&super_lock);		
+      
       
       int leave_loop=0;
       int local_score;
-      pthread_mutex_lock(&main_lock);
-      int local_alpha=alpha;
-      int local_beta=beta;
-      pthread_mutex_unlock(&main_lock);
       /*      byte*p_board=board;*/
 
       while(leave_loop==0){
+
+	pthread_mutex_lock(&main_lock);
+      int local_alpha=alpha;
+      int local_beta=beta;
+      pthread_mutex_unlock(&main_lock);
+      //pthread_mutex_lock (&super_lock);
+      leave_loop=1;
+      struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
+      
+      ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, (move_sp-move_stack));
+      //arg_ball->move_sp=move_sp;
+
+      int j=0;
+      byte* p_board=(byte*) malloc(67*sizeof(byte));
+      for (j=0;j<67; j++){
+	p_board[j]=board[j];
+      }
+      //ruin_global_variables();
+      
+
+      /*go into move, check if legal;*/
+      
+      /*TEMP this should be a deep copy of board*/
+      p_make_move(m->move, p_board, arg_ball);
+      
+      /*TEMP this needs to be a deep copy of board.*/
+      p_compute_attacks(p_board, arg_ball);
+      if (arg_ball->friend->attack[arg_ball->enemy->king] != 0) { /* illegal? */
 	
-	leave_loop=1;
-	struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
-
-	ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, (move_sp-move_stack));
-
-	//arg_ball->move_sp=move_sp;
-
-	int j=0;
-	byte* p_board=(byte*) malloc(67*sizeof(byte));
-	for (j=0;j<67; j++){
-	  p_board[j]=board[j];
-	}
-	//ruin_global_variables();
-		
-
-	/*go into move, check if legal;*/
-	
-	/*TEMP this should be a deep copy of board*/
-	p_make_move(m->move, p_board, arg_ball);
-	
-	/*TEMP this needs to be a deep copy of board.*/
-	p_compute_attacks(p_board, arg_ball);
-
-
-
-	if (arg_ball->friend->attack[arg_ball->enemy->king] != 0) { /* illegal? */
-
 	/*TEMP this needs to be a deep copy of board.*/
 	p_unmake_move(p_board, arg_ball);
 
@@ -3397,12 +3394,12 @@ static int p_root_search(int maxdepth)
 	free(move_stack_copy);
 	free(p_board );
 	free(arg_ball);
-
+	//pthread_mutex_unlock (&super_lock);
 	//restore_global_variables();
 	continue;
       }
 
-
+      
       /*			 SIMPLE No hash stack
       //don't know what this is anyway
       hash_stack[arg_ball->ply] = p_compute_hash(p_board, arg_ball);*/
@@ -3410,17 +3407,19 @@ static int p_root_search(int maxdepth)
       
       /*do normal search. Or if end of depth, Q-Search*/
 	
-	if (depth-1 > 0) {
+      if (depth-1 > 0) {
 	
 	/*TEMP  This needs to be deep copy of board*/
-	  
-	  local_score = -p_child_search(depth-1, -local_beta, -local_alpha, p_board, arg_ball);
-	} else {
+	
+	local_score = -p_child_search(depth-1, -local_beta, -local_alpha, p_board, arg_ball);
+      } else {
 	
 
 	/*TEMP  This needs to be deep copy of board*/
 	local_score = -p_qsearch(-local_beta, -local_alpha, p_board, arg_ball);
       }
+
+
       /*TEMP  This needs to be deep copy of board*/
       p_unmake_move(p_board, arg_ball);
       
@@ -3433,7 +3432,7 @@ static int p_root_search(int maxdepth)
 
       
       /*Fix window if it was too narrow.*/
-      if (local_score>=beta || (local_score<=alpha && m==move_stack)) {
+      if (local_score>=local_beta || (local_score<=alpha && m==move_stack)) {
 	pthread_mutex_lock(& main_lock);
 	if (local_score>=beta || (local_score<=alpha && m==move_stack)) {
 	alpha = -INF;
@@ -3442,16 +3441,16 @@ static int p_root_search(int maxdepth)
 	pthread_mutex_unlock(& main_lock);
 	//	m--;
 	leave_loop=0;
-
+	//pthread_mutex_unlock (&super_lock);
 	continue; // re-search this move 
       }
       
 
-      //      pthread_mutex_lock(& main_lock);
+
       /*I don't know what this is*/
       /*m->prescore = ~squeeze(nodes-node);
 	node = nodes;*/
-      //      pthread_mutex_unlock(& main_lock);      
+
 
       num_moves++;
       /*            if((ply==147 ) && depth==1){
@@ -3475,9 +3474,9 @@ static int p_root_search(int maxdepth)
       }
       pthread_mutex_unlock(& main_lock);
 
-
+      //      pthread_mutex_unlock (&super_lock);            
       }//while proceed
-      pthread_mutex_unlock (&super_lock);                  
+      
 
        /* continue with next move */
     }
@@ -3631,7 +3630,7 @@ int main(int argc, char *argv[])
 			//	fprintf(write_time, "%f\n", ((double)end-start)/CLOCKS_PER_SEC);
 			fprintf(write_time, "%f\n", end_c-start_c);
 
-                        if (!move || ply >= 300) {
+                        if (!move || ply >= 160) {
                                 printf("game over: ");
 				fprintf(write_time, "game over: ");
                                 compute_attacks();
