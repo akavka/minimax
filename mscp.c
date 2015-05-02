@@ -1874,16 +1874,17 @@ static int root_search(int maxdepth)
                 }
 
 		//SIMPLE This code doesn't work in the parallel section.
-		                if (move_sp-move_stack <= 1) {
+		/*if (move_sp-move_stack <= 1) {
                         break; //just one move to play 
-                }
+			}*/
 
                 printf(" %5lu %3d %+1.2f ", nodes, depth, best_score / 100.0);
                 print_move_san(move);
                 puts("");
 
                 /* sort remaining moves in descending order of subtree size */
-                qsort(move_stack+1, move_sp-move_stack-1, sizeof(*m), cmp_move);
+                //SIMPLE I think this relies on the hash table anyway.
+		//qsort(move_stack+1, move_sp-move_stack-1, sizeof(*m), cmp_move);
 
 		/*Widen window for deeper search*/
                 alpha = best_score - 33;        /* aspiration window */
@@ -3340,8 +3341,8 @@ pthread_mutex_init (&super_lock, NULL);
     
 
     parallel_code=1;
-    //            for(m=move_sp-1; m>=move_stack +1; m--){
-    cilk_for (m=move_stack+1;m < move_sp;m++) {
+    //for(m=move_sp-1; m>=move_stack +1; m--){
+      cilk_for (m=move_stack+1;m < move_sp;m++) {
       //fprintf(stderr,"move_stack was %d, m was %d and move_sp was %d\n", move_stack, m, move_sp);
       pthread_mutex_lock (&super_lock);
       
@@ -3476,16 +3477,17 @@ pthread_mutex_unlock (&super_lock);
     parallel_code=0;
     
     
-    if ((num_moves<=1) ||(move_sp-move_stack <= 1)) {
+    /*    if ((num_moves<=1) ||(move_sp-move_stack <= 1)) {
       break; // just one move to play 
-    }
+      }*/
     
     printf(" %5lu %3d %+1.2f ", nodes, depth, best_score / 100.0);
     print_move_san(move);
     puts("");
     
     /* sort remaining moves in descending order of subtree size */
-    qsort(move_stack+1, move_sp-move_stack-1, sizeof(*m), cmp_move);
+    //SIMPLE this relies on the hash table we don't use
+    //    qsort(move_stack+1, move_sp-move_stack-1, sizeof(*m), cmp_move);
     
     /*Widen window for deeper search*/
     alpha = best_score - 33;        /* aspiration window */
