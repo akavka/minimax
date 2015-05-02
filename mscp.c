@@ -1,4 +1,4 @@
-
+ 
 
 /*----------------------------------------------------------------------+
 Adam's arallel chess program.
@@ -1850,11 +1850,11 @@ static int root_search(int maxdepth)
                         m->prescore = ~squeeze(nodes-node);
                         node = nodes;
 
-						if(ply==147 && depth==1){
+			/*		if(ply==147 && depth==1){
 			printf("A DEBUG %5lu %3d %+1.2f ", nodes, depth, score / 100.0);
 			print_move_san(m->move);
 			puts("");
-			}
+			}*/
 
 
                         if ((score > best_score) || ((score==best_score)&&(m->move>move))) {
@@ -1873,8 +1873,9 @@ static int root_search(int maxdepth)
                         m++; /* continue with next move */
                 }
 
-                if (move_sp-move_stack <= 1) {
-                        break; /* just one move to play */
+		//SIMPLE This code doesn't work in the parallel section.
+		                if (move_sp-move_stack <= 1) {
+                        break; //just one move to play 
                 }
 
                 printf(" %5lu %3d %+1.2f ", nodes, depth, best_score / 100.0);
@@ -3240,6 +3241,7 @@ static int p_root_search(int maxdepth)
   struct move     *m;
   pthread_mutex_t main_lock;
   pthread_mutex_t super_lock;
+  int num_moves=0;
   pthread_mutex_init (&main_lock, NULL);
 pthread_mutex_init (&super_lock, NULL);
   
@@ -3265,7 +3267,7 @@ pthread_mutex_init (&super_lock, NULL);
     best_score = INT_MIN;
     
     node = nodes;
-    
+    num_moves=0;
     
     /*in parallel version the first iteration works different than subsequent iterations.*/
     while (m < move_sp && proceed) {
@@ -3309,12 +3311,12 @@ pthread_mutex_init (&super_lock, NULL);
       m->prescore = ~squeeze(nodes-node);
       node = nodes;
 
-
-      if((ply==147 ) && depth==1){
+      num_moves++;
+      /*            if((ply==147 ) && depth==1){
 	  printf("B DEBUG %5lu %3d %+1.2f ", nodes, depth, score / 100.0);
 	  print_move_san(m->move);
 	  puts("");
-	  }
+	  }*/
 
 
 
@@ -3338,8 +3340,8 @@ pthread_mutex_init (&super_lock, NULL);
     
 
     parallel_code=1;
-    //        for(m=move_sp-1; m>=move_stack; m--){
-    for (m=move_stack+1;m < move_sp;m++) {
+    //            for(m=move_sp-1; m>=move_stack +1; m--){
+    cilk_for (m=move_stack+1;m < move_sp;m++) {
       //fprintf(stderr,"move_stack was %d, m was %d and move_sp was %d\n", move_stack, m, move_sp);
       pthread_mutex_lock (&super_lock);
       
@@ -3376,6 +3378,8 @@ pthread_mutex_init (&super_lock, NULL);
 	/*TEMP this needs to be a deep copy of board.*/
 	p_unmake_move(p_board, arg_ball);
 
+
+	//	move_sp--;
 	//	*m = *--(arg_ball->move_sp); /* drop this move */
 	//m--;	
 
@@ -3441,11 +3445,12 @@ pthread_mutex_init (&super_lock, NULL);
 	node = nodes;*/
       pthread_mutex_unlock(& main_lock);      
 
-      if((ply==147 ) && depth==1){
+      num_moves++;
+      /*            if((ply==147 ) && depth==1){
 	  printf("C DEBUG %5lu %3d %+1.2f ", nodes, depth, local_score / 100.0);
 	  print_move_san(m->move);
 	  puts("");
-	  }
+	  }*/
     
       pthread_mutex_lock(& main_lock);
       if ((local_score > best_score) || (local_score==best_score &&(m->move>move))) {
@@ -3456,9 +3461,9 @@ pthread_mutex_init (&super_lock, NULL);
 	beta = local_score + 2;
 	move = m->move;
 	
-	tmp = *move_stack; /* swap with top of list */
+	/*	tmp = *move_stack; // swap with top of list 
 	*move_stack = *m;
-	*m = tmp;
+	*m = tmp;*/
       }
       pthread_mutex_unlock(& main_lock);
 
@@ -3470,8 +3475,9 @@ pthread_mutex_unlock (&super_lock);
     }
     parallel_code=0;
     
-    if (move_sp-move_stack <= 1) {
-      break; /* just one move to play */
+    
+    if ((num_moves<=1) ||(move_sp-move_stack <= 1)) {
+      break; // just one move to play 
     }
     
     printf(" %5lu %3d %+1.2f ", nodes, depth, best_score / 100.0);
