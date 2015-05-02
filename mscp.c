@@ -3355,8 +3355,8 @@ pthread_mutex_init (&super_lock, NULL);
     
     
     parallel_code=1;
-    //        for(m=move_sp-1; m>=move_stack; m--){
-    for (;m < move_sp;m++) {
+            for(m=move_sp-1; m>=move_stack; m--){
+    //for (;m < move_sp;m++) {
       //fprintf(stderr,"move_stack was %d, m was %d and move_sp was %d\n", move_stack, m, move_sp);
       pthread_mutex_lock (&super_lock);
       
