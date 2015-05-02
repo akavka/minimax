@@ -93,7 +93,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 3;                /* Maximum search depth */
+static int maxdepth = 4;                /* Maximum search depth */
 static int parallel_code=0;
 #define RANDOM_COUNTDOWN_START 15
 static int random_countdown=RANDOM_COUNTDOWN_START;
@@ -1580,7 +1580,9 @@ if (parallel_code){
 	
 
 	if (random_countdown>0){
-	  score += (hash_stack[ply] ^ rnd_seed) % 17 - 8;
+	  //score += (hash_stack[ply] ^ rnd_seed) % 17 - 8;
+	  score += (rnd()) % 17 - 8;
+	  
 	}
 
 
@@ -3575,6 +3577,7 @@ int main(int argc, char *argv[])
 	/*SIMPLE I added this so we can input the random seed.*/
 	if(argc>1){
 	rnd_seed=atol(argv[1]);
+	fprintf(stderr, "Got randome seed, it was %d\n", rnd_seed);
 	}
 	else{
 	  rnd_seed=time(NULL);
