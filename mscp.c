@@ -1850,18 +1850,20 @@ static int root_search(int maxdepth)
                         m->prescore = ~squeeze(nodes-node);
                         node = nodes;
 
-			/*			if(ply==43 && depth==1){
-			printf("DEBUG %5lu %3d %+1.2f ", nodes, depth, score / 100.0);
+						if(ply==147 && depth==1){
+			printf("A DEBUG %5lu %3d %+1.2f ", nodes, depth, score / 100.0);
 			print_move_san(m->move);
 			puts("");
-			}*/
+			}
 
-                        if (score > best_score) {
+
+                        if ((score > best_score) || ((score==best_score)&&(m->move>move))) {
+			//                        if (score > best_score) {
                                 struct move tmp;
 
                                 best_score = score;
-                                alpha = score;
-                                beta = score + 1;
+                                alpha = score-1;
+                                beta = score + 2;
                                 move = m->move;
 
                                 tmp = *move_stack; /* swap with top of list */
@@ -3306,14 +3308,24 @@ pthread_mutex_init (&super_lock, NULL);
       /*I don't know what this is*/
       m->prescore = ~squeeze(nodes-node);
       node = nodes;
+
+
+      if((ply==147 ) && depth==1){
+	  printf("B DEBUG %5lu %3d %+1.2f ", nodes, depth, score / 100.0);
+	  print_move_san(m->move);
+	  puts("");
+	  }
+
+
+
       
-      
-      if (score > best_score) {
+      if ((score > best_score) || (score==best_score &&(m->move>move))) {
+	      //if (score > best_score) {
 	struct move tmp;
 	
 	best_score = score;
-	alpha = score;
-	beta = score + 1;
+	alpha = score-1;
+	beta = score + 2;
 	move = m->move;
 	
 	tmp = *move_stack; /* swap with top of list */
@@ -3429,19 +3441,19 @@ pthread_mutex_init (&super_lock, NULL);
 	node = nodes;*/
       pthread_mutex_unlock(& main_lock);      
 
-      /*      if((ply==43 ) && depth==1){
-	  printf("DEBUG %5lu %3d %+1.2f ", nodes, depth, local_score / 100.0);
+      if((ply==147 ) && depth==1){
+	  printf("C DEBUG %5lu %3d %+1.2f ", nodes, depth, local_score / 100.0);
 	  print_move_san(m->move);
 	  puts("");
-	  }*/
+	  }
     
       pthread_mutex_lock(& main_lock);
-      if (local_score > best_score) {
+      if ((local_score > best_score) || (local_score==best_score &&(m->move>move))) {
 	struct move tmp;
 	
 	best_score = local_score;
-	alpha = local_score;
-	beta = local_score + 1;
+	alpha = local_score-1;
+	beta = local_score + 2;
 	move = m->move;
 	
 	tmp = *move_stack; /* swap with top of list */
