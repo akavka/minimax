@@ -3461,9 +3461,9 @@ pthread_mutex_init (&super_lock, NULL);
 	beta = local_score + 2;
 	move = m->move;
 	
-	/*	tmp = *move_stack; // swap with top of list 
+	tmp = *move_stack; // swap with top of list 
 	*move_stack = *m;
-	*m = tmp;*/
+	*m = tmp;
       }
       pthread_mutex_unlock(& main_lock);
 
