@@ -93,9 +93,11 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 7;                /* Maximum search depth */
+#define RANDOM_DEPTH 2
+#define FINAL_DEPTH 7
+static int maxdepth = RANDOM_DEPTH;                /* Maximum search depth */
 static int parallel_code=0;
-#define RANDOM_COUNTDOWN_START 0
+#define RANDOM_COUNTDOWN_START 10
 #define GAME_LENGTH 12
 static int random_countdown=RANDOM_COUNTDOWN_START;
 static int total_nodes_visited=0;
@@ -1586,7 +1588,7 @@ if (parallel_code){
 
 	if (random_countdown>0){
 	  //score += (hash_stack[ply] ^ rnd_seed) % 17 - 8;
-	  score += (rnd()) % 17 - 8;
+	  score += (rnd()) % 91 - 46;
 	  
 	}
 
@@ -3707,37 +3709,41 @@ int main(int argc, char *argv[])
 		  move=0;
 		  start=clock();
 		  start_c=currentSeconds();
-                        if (!move) {
-                                booksize = 0;
-                                memset(&core, 0, sizeof(core));
-                                memset(history, 0, sizeof(history));
-
-				if (argc>2 && atoi(argv[2])==1 && random_countdown<=0){
-				  move=p_root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
-				    }
-				else{
-				  move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
-				    }
-				fprintf(stderr,"Did move %d\n", ply);
-				random_countdown-=1;
-                        }
-
-			end=clock();
+		  if (!move) {
+		    booksize = 0;
+		    memset(&core, 0, sizeof(core));
+		    memset(history, 0, sizeof(history));
+		    
+		    if (argc>2 && atoi(argv[2])==1 && random_countdown<=0){
+		      move=p_root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
+		    }
+		    else{
+		      move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
+		    }
+		    fprintf(stderr,"Did move %d\n", ply);
+		    random_countdown-=1;
+		    if (random_countdown<= 0){
+		      maxdepth=atoi(argv[3]);
+		    }//if
+		    
+		  }
+		  
+		  end=clock();
 			end_c=currentSeconds();
 			//	fprintf(write_time, "%f\n", ((double)end-start)/CLOCKS_PER_SEC);
 			fprintf(write_time, "%f\n", end_c-start_c);
-
-                        if (!move || ply >= GAME_LENGTH) {
-                                printf("game over: ");
-				fprintf(write_time, "game over: ");
-                                compute_attacks();
-                                if (!move && enemy->attack[friend->king] != 0) {
-                                        puts(WTM ? "0-1" : "1-0");
-					fputs(WTM ? "0-1\n" : "1-0\n",write_time);
-                                } else {
-                                        puts("1/2-1/2");
-					fputs("1/2-1/2\n",write_time);
-                                }
+			
+                        if (!move || ply >= atoi(argv[4])) {
+			  printf("game over: ");
+			  fprintf(write_time, "game over: ");
+			  compute_attacks();
+			  if (!move && enemy->attack[friend->king] != 0) {
+			    puts(WTM ? "0-1" : "1-0");
+			    fputs(WTM ? "0-1\n" : "1-0\n",write_time);
+			  } else {
+			    puts("1/2-1/2");
+			    fputs("1/2-1/2\n",write_time);
+			  }
                                 computer[0] = computer[1] = 0;
 				
                                 break;
@@ -3745,7 +3751,7 @@ int main(int argc, char *argv[])
                         printf("%d. ... ", 1+ply/2);
                         print_move_long(move);
                         putc('\n', stdout);
-
+			
                         make_move(move);
                         hash_stack[ply] = compute_hash();
 
