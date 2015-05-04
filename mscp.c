@@ -93,7 +93,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 3;                /* Maximum search depth */
+static int maxdepth = 5;                /* Maximum search depth */
 static int parallel_code=0;
 #define RANDOM_COUNTDOWN_START 0
 #define GAME_LENGTH 12
@@ -1804,8 +1804,10 @@ static int root_search(int maxdepth, FILE* write_time,FILE*write_first_time, FIL
         int             alpha, beta;
         unsigned long   node;
         struct move     *m;
+	int do_mid=1;
+	double initialize,top, mid, bottom;
+	int top_nodes, mid_nodes, bottom_nodes;
 
-	
         nodes = 0;
         compute_piece_square_tables();
 
@@ -1817,6 +1819,9 @@ static int root_search(int maxdepth, FILE* write_time,FILE*write_first_time, FIL
         puts(" nodes ply score move");
 
         for (depth = 1; depth <= maxdepth; depth++) {
+	  do_mid=1;
+	  top=currentSeconds();
+	  top_nodes=nodes;
                 m = move_stack;
                 best_score = INT_MIN;
 
@@ -1879,6 +1884,18 @@ static int root_search(int maxdepth, FILE* write_time,FILE*write_first_time, FIL
                                 *m = tmp;
                         }
                         m++; /* continue with next move */
+			if((do_mid>0)&&(depth>=maxdepth-1)){
+			  mid=currentSeconds();
+			  mid_nodes=nodes;
+			  fprintf(stderr, "Depth %d: First half time %f nodes is %d\n", depth, mid-top, mid_nodes-top_nodes);
+			  fprintf(write_first_time, "%f\n", mid-top);
+			  fprintf(write_first_count, "%d\n", mid_nodes-top_nodes);
+			  do_mid--;
+			}
+  
+
+
+ 
                 }
 
 		//SIMPLE This code doesn't work in the parallel section.
@@ -1898,9 +1915,18 @@ static int root_search(int maxdepth, FILE* write_time,FILE*write_first_time, FIL
 		/*Widen window for deeper search*/
                 alpha = best_score - 33;        /* aspiration window */
                 beta = best_score + 33;
+
+		if(depth>=maxdepth-1){
+		  bottom=currentSeconds();
+		  bottom_nodes=nodes;
+		  fprintf(stderr, "Depth %d: second half time %f and nodes %d\n", depth, bottom-mid, bottom_nodes-mid_nodes);
+		  fprintf(write_second_time, "%f\n", bottom-mid);
+		  fprintf(write_second_count, "%d\n", bottom_nodes-mid_nodes);
+		}
+		
         }
         move_sp = move_stack;
-
+	fprintf(write_count, "%d\n", nodes);
         return move;
 }
 
@@ -3374,6 +3400,8 @@ pthread_mutex_init (&super_lock, NULL);
     mid=currentSeconds();
     mid_nodes=*nodes_visited;
     fprintf(stderr, "Depth %d: First half time %f nodes is %d\n", depth, mid-top, mid_nodes-top_nodes);
+    fprintf(write_first_time, "%f\n", mid-top);
+    fprintf(write_first_count, "%d\n", mid_nodes-top_nodes);
     }
     parallel_code=1;
     //for(m=move_sp-1; m>=move_stack +1; m--){
@@ -3545,7 +3573,8 @@ pthread_mutex_unlock(& nodes_visited_lock);
       fprintf(stderr, "Depth %d: second half time %f and nodes %d\n", depth, bottom-mid, bottom_nodes-mid_nodes);
       total_nodes_visited+=(*nodes_visited);
       fprintf(stderr, "Nodes visited here was %d, total was %d\n", *nodes_visited,total_nodes_visited);
-  
+      fprintf(write_second_time, "%f\n", bottom-mid);
+      fprintf(write_second_count, "%d\n", bottom_nodes-mid_nodes);
     }
 
 
@@ -3554,7 +3583,7 @@ pthread_mutex_unlock(& nodes_visited_lock);
 
   bottom=currentSeconds();
   fprintf(stderr, "Total time was was %f\n", bottom-initialize);
-
+  fprintf(write_count, "%d\n", *nodes_visited);
  
 
 
