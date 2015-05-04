@@ -81,12 +81,23 @@ def main():
     secondCount1=analyzeCount("count_second1.dat")
     secondCount2=analyzeCount("count_second2.dat")
 
-    print("Overall efficiency 1 was " +str(totalCount1/totalTime1))
+
+    print("Overall speedup was " + str(totalTime1/totalTime2))
+    print("Overall efficiency speedup was " + str((totalCount2/totalTime2)/(totalCount1/totalTime1)))
+    print("First Branch efficiency speedup was " + str((firstCount2/firstTime2)/(firstCount1/firstTime1)))
+    print("Second Branch efficiency speedup was " + str((secondCount2/secondTime2)/(secondCount1/secondTime1)))
+    print("Fraction in first branch for serial was " + str(firstTime1/secondTime1))
+    print("Fraction in first branch for parallel was " + str(firstTime2/secondTime2))
+    
+    
+    #print("Overall efficiency 1 was " +str(totalCount1/totalTime1))
+    
     print("First efficiency 1 was " +str(firstCount1/firstTime1))
     print("Second efficiency 1 was " +str(secondCount1/secondTime1))
-    print("Overall efficiency 2 was " +str(totalCount2/totalTime2))
+    #print("Overall efficiency 2 was " +str(totalCount2/totalTime2))
     print("First efficiency 2 was " +str(firstCount2/firstTime2))
     print("Second efficiency 2 was " +str(secondCount2/secondTime2))
+
 
 if __name__=="__main__":
     main()
