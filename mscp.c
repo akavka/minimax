@@ -93,10 +93,10 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 8;                /* Maximum search depth */
+static int maxdepth = 6;                /* Maximum search depth */
 static int parallel_code=0;
 #define RANDOM_COUNTDOWN_START 0
-#define GAME_LENGTH 8
+#define GAME_LENGTH 12
 static int random_countdown=RANDOM_COUNTDOWN_START;
 static int total_nodes_visited=0;
 
@@ -3263,9 +3263,11 @@ static int p_root_search(int maxdepth, FILE* write_time)
   pthread_mutex_t nodes_visited_lock;
   pthread_mutex_t super_lock;
   int num_moves=0;
-  int start, mid;
+  double initialize,top, mid, bottom;
   int *nodes_visited=(int*)malloc(sizeof(int));
   
+  initialize=currentSeconds();
+
   pthread_mutex_init (&main_lock, NULL);
 pthread_mutex_init (&nodes_visited_lock, NULL);
 
@@ -3288,7 +3290,7 @@ pthread_mutex_init (&super_lock, NULL);
   
   for (depth = 1; depth <= maxdepth; depth++) {
     int proceed=1;
-    
+    top=currentSeconds();
     m = move_stack;
     best_score = INT_MIN;
     
@@ -3364,6 +3366,9 @@ pthread_mutex_init (&super_lock, NULL);
       proceed=0;		
     }
     
+
+    mid=currentSeconds();
+    fprintf(stderr, "Time for the first step at this depth is %f\n", mid-top);
 
     parallel_code=1;
     //for(m=move_sp-1; m>=move_stack +1; m--){
@@ -3529,8 +3534,18 @@ pthread_mutex_unlock(& nodes_visited_lock);
     /*Widen window for deeper search*/
     alpha = best_score - 33;        /* aspiration window */
     beta = best_score + 33;
+
+  bottom=currentSeconds();
+  fprintf(stderr, "Time for second half was %f\n", bottom-mid);
+
   }
   move_sp = move_stack;
+
+  bottom=currentSeconds();
+  fprintf(stderr, "Total time was was %f\n", bottom-initialize);
+
+ 
+
 
   return move;
 }
