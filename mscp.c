@@ -93,7 +93,7 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 6;                /* Maximum search depth */
+static int maxdepth = 3;                /* Maximum search depth */
 static int parallel_code=0;
 #define RANDOM_COUNTDOWN_START 0
 #define GAME_LENGTH 12
@@ -1796,7 +1796,7 @@ static unsigned short squeeze(unsigned long n)
         return s | n;
 }
 
-static int root_search(int maxdepth, FILE* write_time)
+static int root_search(int maxdepth, FILE* write_time,FILE*write_first_time, FILE*write_second_time, FILE*write_count, FILE*write_first_count, FILE*write_second_count)
 {
         int             depth;
         int             score, best_score;
@@ -2011,7 +2011,8 @@ static void cmd_test(char *s)
 {
         int d = maxdepth;
         sscanf(s, "%*s%d", &d);
-        root_search(d, NULL);
+        root_search(d, NULL, NULL, NULL, NULL, NULL, NULL);
+
 }
 
 static void cmd_set_depth(char *s)
@@ -3251,7 +3252,7 @@ void array_compare(byte* arr1, byte* arr2, int len, char* message){
 
 }
 
-static int p_root_search(int maxdepth, FILE* write_time)
+static int p_root_search(int maxdepth, FILE* write_time, FILE*write_first_time, FILE*write_second_time, FILE*write_count, FILE*write_first_count, FILE*write_second_count)
 {
   int             depth;
   int             score, best_score;
@@ -3264,6 +3265,7 @@ static int p_root_search(int maxdepth, FILE* write_time)
   pthread_mutex_t super_lock;
   int num_moves=0;
   double initialize,top, mid, bottom;
+  int top_nodes, mid_nodes, bottom_nodes;
   int *nodes_visited=(int*)malloc(sizeof(int));
   
   initialize=currentSeconds();
@@ -3291,6 +3293,7 @@ pthread_mutex_init (&super_lock, NULL);
   for (depth = 1; depth <= maxdepth; depth++) {
     int proceed=1;
     top=currentSeconds();
+    top_nodes=*nodes_visited;
     m = move_stack;
     best_score = INT_MIN;
     
@@ -3367,9 +3370,11 @@ pthread_mutex_init (&super_lock, NULL);
     }
     
 
+    if(depth>=maxdepth-1){
     mid=currentSeconds();
-    fprintf(stderr, "Time for the first step at this depth is %f\n", mid-top);
-
+    mid_nodes=*nodes_visited;
+    fprintf(stderr, "Depth %d: First half time %f nodes is %d\n", depth, mid-top, mid_nodes-top_nodes);
+    }
     parallel_code=1;
     //for(m=move_sp-1; m>=move_stack +1; m--){
       cilk_for (m=move_stack+1;m < move_sp;m++) {
@@ -3521,8 +3526,6 @@ pthread_mutex_unlock(& nodes_visited_lock);
     /*    if ((num_moves<=1) ||(move_sp-move_stack <= 1)) {
       break; // just one move to play 
       }*/
-  total_nodes_visited+=(*nodes_visited);
-  fprintf(stderr, "Nodes visited here was %d, total was %d\n", *nodes_visited,total_nodes_visited);
     printf(" %3d %+1.2f ", depth, best_score / 100.0);
     print_move_san(move);
     puts("");
@@ -3535,8 +3538,16 @@ pthread_mutex_unlock(& nodes_visited_lock);
     alpha = best_score - 33;        /* aspiration window */
     beta = best_score + 33;
 
-  bottom=currentSeconds();
-  fprintf(stderr, "Time for second half was %f\n", bottom-mid);
+
+    if(depth>=maxdepth-1){
+      bottom=currentSeconds();
+      bottom_nodes=*nodes_visited;
+      fprintf(stderr, "Depth %d: second half time %f and nodes %d\n", depth, bottom-mid, bottom_nodes-mid_nodes);
+      total_nodes_visited+=(*nodes_visited);
+      fprintf(stderr, "Nodes visited here was %d, total was %d\n", *nodes_visited,total_nodes_visited);
+  
+    }
+
 
   }
   move_sp = move_stack;
@@ -3580,14 +3591,24 @@ int main(int argc, char *argv[])
         int move;
 	clock_t start, end;
 	double start_c, end_c;
-	FILE*write_time;
+	FILE*write_time, *write_first_time, *write_second_time, *write_first_count, *write_second_count, *write_count;
 
 	fprintf(stderr,"ticks Per Seconds is %f", ticksPerSecond()); 
-	if (argc>2 && atoi(argv[2])==1 ){
+	if (argc>2 && atoi(argv[2])==1){
 	  write_time=fopen("time2.dat", "w");
+	  write_first_time=fopen("time_first2.dat", "w");
+	  write_second_time=fopen("time_second2.dat", "w");
+	  write_count=fopen("count2.dat", "w");
+	  write_first_count=fopen("count_first2.dat", "w");
+	  write_second_count=fopen("count_second2.dat", "w");
 	}
 	else{
 	  write_time=fopen("time1.dat", "w");
+	  write_first_time=fopen("time_first1.dat", "w");
+	  write_second_time=fopen("time_second1.dat", "w");
+	  write_count=fopen("count1.dat", "w");
+	  write_first_count=fopen("count_first1.dat", "w");
+	  write_second_count=fopen("count_second1.dat", "w");
 	}
 	fprintf(stderr, "Started.\n");
 
@@ -3663,10 +3684,10 @@ int main(int argc, char *argv[])
                                 memset(history, 0, sizeof(history));
 
 				if (argc>2 && atoi(argv[2])==1 && random_countdown<=0){
-				  move=p_root_search(maxdepth, write_time);
+				  move=p_root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
 				    }
 				else{
-				  move = root_search(maxdepth, write_time);
+				  move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
 				    }
 				fprintf(stderr,"Did move %d\n", ply);
 				random_countdown-=1;
@@ -3703,6 +3724,11 @@ int main(int argc, char *argv[])
                 }
         }
 	fclose(write_time);
+fclose(write_first_time);
+fclose(write_second_time);
+fclose(write_count);
+fclose(write_first_count);
+fclose(write_second_count);
         return 0;
 }
 
