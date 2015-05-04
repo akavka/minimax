@@ -1,7 +1,7 @@
  
 
 /*----------------------------------------------------------------------+
-Adam's arallel chess program.
+Adam's Parallel chess program.
 Created 1 April 2015
 Updated: May 2015
 This code takes Marcel's Simple Chess Program and improves it by adding
@@ -93,10 +93,14 @@ static unsigned short history[64*64]; /* History-move heuristic counters */
 static signed char undo_stack[6*1024], *undo_sp; /* Move undo administration */
 static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 
-static int maxdepth = 5;                /* Maximum search depth */
+static int maxdepth = 8;                /* Maximum search depth */
 static int parallel_code=0;
-#define RANDOM_COUNTDOWN_START 15
+#define RANDOM_COUNTDOWN_START 0
+#define GAME_LENGTH 8
 static int random_countdown=RANDOM_COUNTDOWN_START;
+static int total_nodes_visited=0;
+
+
 
 /* Constants for static move ordering (pre-scores) */
 #define PRESCORE_EQUAL       (10U<<9)
@@ -137,6 +141,7 @@ typedef struct ball {
   unsigned short caps;
   struct move *move_sp;
   signed char *undo_sp;
+  int nodes_visited;
 }ball;
 
 
@@ -1599,8 +1604,8 @@ static int qsearch(int alpha, int beta)
         int                             score;
         struct move                     *moves;
 
-	/*SIMPLE reduced shared variables
-        nodes++;*/
+
+        nodes++;
 
 
 
@@ -1673,8 +1678,8 @@ if (parallel_code){
 	int                             oldbeta = beta;
         int                             i, count=0;
 	*/
-	/*SIMPLE reduced shared variables
-	  nodes++;*/
+
+	  nodes++;
 
 
 
@@ -1791,7 +1796,7 @@ static unsigned short squeeze(unsigned long n)
         return s | n;
 }
 
-static int root_search(int maxdepth)
+static int root_search(int maxdepth, FILE* write_time)
 {
         int             depth;
         int             score, best_score;
@@ -1800,6 +1805,7 @@ static int root_search(int maxdepth)
         unsigned long   node;
         struct move     *m;
 
+	
         nodes = 0;
         compute_piece_square_tables();
 
@@ -1879,8 +1885,9 @@ static int root_search(int maxdepth)
 		/*if (move_sp-move_stack <= 1) {
                         break; //just one move to play 
 			}*/
-
-                printf(" %5lu %3d %+1.2f ", nodes, depth, best_score / 100.0);
+	total_nodes_visited+=nodes;
+	fprintf(stderr, "Serial nodes visited was %d, total so far is %d\n", nodes, total_nodes_visited);
+                printf(" %3d %+1.2f ", depth, best_score / 100.0);
                 print_move_san(move);
                 puts("");
 
@@ -1893,6 +1900,7 @@ static int root_search(int maxdepth)
                 beta = best_score + 33;
         }
         move_sp = move_stack;
+
         return move;
 }
 
@@ -2003,7 +2011,7 @@ static void cmd_test(char *s)
 {
         int d = maxdepth;
         sscanf(s, "%*s%d", &d);
-        root_search(d);
+        root_search(d, NULL);
 }
 
 static void cmd_set_depth(char *s)
@@ -2711,6 +2719,7 @@ static ball* setup(struct side * arg_white, struct side* arg_black, struct side*
   memcpy(copy_move_stack, move_stack, 1024*sizeof(struct move));
   result->move_sp=copy_move_stack+offset;
   result->undo_sp=(signed char*) malloc(6*1024*sizeof(signed char));
+  result->nodes_visited=0;
   /*  if ((*((int*)(result->move_sp)))!=(*((int*)(move_sp)))){
     fprintf(stderr,"move_sp wasn't copied correctly\n");
   }
@@ -2763,8 +2772,8 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball *arg_ball)
         int                             score;
         struct move                     *moves;
 
-	/*SIMPLE reduced shared variables
-        nodes++;*/
+	/*SIMPLE reduced shared variables*/
+        arg_ball->nodes_visited++;
 
 
 	/*SIMPLE no hash
@@ -2830,8 +2839,8 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
 	int                             oldbeta = beta;
         int                             i, count=0;
 	*/
-	/*SIMPLE reduced shared variables
-	  nodes++;*/
+
+	
 
 
 
@@ -2857,8 +2866,9 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
         }
 
         history[best_move] |= PRESCORE_HASHMOVE;*/
+	
         incheck = arg_ball->enemy->attack[arg_ball->friend->king];
-
+	arg_ball->nodes_visited++;
         /*
          *  p_generate moves
          */
@@ -2940,7 +2950,7 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
 }
 
 
-static int p_vsearch(int depth, int alpha, int beta)
+static int p_vsearch(int depth, int alpha, int beta, int* nodes_visited)
 {
         int                             best_score = -INF;
         int                             best_move = 0;
@@ -2951,6 +2961,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 	struct move *k;
 	int fail=0;
 	pthread_mutex_t main_lock;
+	pthread_mutex_t nodes_visited_lock;
 
         /*SIMPLE we cut these variables when we don't use the hash table
        
@@ -2988,7 +2999,10 @@ static int p_vsearch(int depth, int alpha, int beta)
         }
 
         history[best_move] |= PRESCORE_HASHMOVE;*/
+
+	(*nodes_visited)++;	
 	pthread_mutex_init(&main_lock, NULL);
+pthread_mutex_init(&nodes_visited_lock, NULL);
         incheck = enemy->attack[friend->king];
 
         /*
@@ -3021,9 +3035,9 @@ static int p_vsearch(int depth, int alpha, int beta)
 
                 newdepth = incheck ? depth : depth-1;
                 if (newdepth <= 0) {
-                        score = -qsearch(-beta, -alpha);
+		  score = -qsearch(-beta, -alpha);
                 } else {
-                        score = -p_vsearch(newdepth, -beta, -alpha);
+		  score = -p_vsearch(newdepth, -beta, -alpha, nodes_visited);
                 }
                 if (score < -29000) score++;    /* adjust for mate-in-n */
 		proceed=0;
@@ -3063,9 +3077,6 @@ static int p_vsearch(int depth, int alpha, int beta)
 		//Make local copies of global variables
 		struct move* move_stack_copy;
 		ball*arg_ball;
-
-
-		
 
 
 
@@ -3135,6 +3146,12 @@ static int p_vsearch(int depth, int alpha, int beta)
 		    local_score = -p_child_search(newdepth, -beta, -local_alpha, p_board, arg_ball);
 		  }
 		  if (local_score < -29000) local_score++;    /* adjust for mate-in-n */
+
+
+		  pthread_mutex_lock(&nodes_visited_lock);
+		  (*nodes_visited)+=arg_ball->nodes_visited;
+		  
+		  pthread_mutex_unlock(&nodes_visited_lock);
 		  
 		  
 		  /*TEMP this should be a deep copy of board*/
@@ -3149,7 +3166,7 @@ static int p_vsearch(int depth, int alpha, int beta)
 
 		  
 		  if ((local_score>alpha) || (local_score>best_score)){
-		    			  	pthread_mutex_lock(&main_lock);
+		    pthread_mutex_lock(&main_lock);
 		    if (local_score>alpha){
 		      usleep(1);
 		      best_score = local_score;
@@ -3234,7 +3251,7 @@ void array_compare(byte* arr1, byte* arr2, int len, char* message){
 
 }
 
-static int p_root_search(int maxdepth)
+static int p_root_search(int maxdepth, FILE* write_time)
 {
   int             depth;
   int             score, best_score;
@@ -3243,9 +3260,14 @@ static int p_root_search(int maxdepth)
   unsigned long   node;
   struct move     *m;
   pthread_mutex_t main_lock;
+  pthread_mutex_t nodes_visited_lock;
   pthread_mutex_t super_lock;
   int num_moves=0;
+  int start, mid;
+  int *nodes_visited=(int*)malloc(sizeof(int));
+  
   pthread_mutex_init (&main_lock, NULL);
+pthread_mutex_init (&nodes_visited_lock, NULL);
 
 pthread_mutex_init (&super_lock, NULL);  
   nodes = 0;
@@ -3256,6 +3278,7 @@ pthread_mutex_init (&super_lock, NULL);
   
   alpha = -INF;
   beta = +INF;
+  *nodes_visited=0;
   puts(" nodes ply score move");
   
   
@@ -3295,7 +3318,7 @@ pthread_mutex_init (&super_lock, NULL);
       if (depth-1 > 0) {
 	
 	/*TEMP change*/
-	score = -p_vsearch(depth-1, -beta, -alpha);
+	score = -p_vsearch(depth-1, -beta, -alpha, nodes_visited);
       } else {
 	
 	score = -qsearch(-beta, -alpha);
@@ -3354,10 +3377,10 @@ pthread_mutex_init (&super_lock, NULL);
 
       while(leave_loop==0){
 
-	pthread_mutex_lock(&main_lock);
+	//	pthread_mutex_lock(&main_lock);
       int local_alpha=alpha;
       int local_beta=beta;
-      pthread_mutex_unlock(&main_lock);
+      //pthread_mutex_unlock(&main_lock);
       //pthread_mutex_lock (&super_lock);
       leave_loop=1;
       struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
@@ -3371,8 +3394,9 @@ pthread_mutex_init (&super_lock, NULL);
 	p_board[j]=board[j];
       }
       //ruin_global_variables();
-      
-
+      pthread_mutex_lock(& nodes_visited_lock);
+(*nodes_visited)++;
+pthread_mutex_unlock(& nodes_visited_lock);
       /*go into move, check if legal;*/
       
       /*TEMP this should be a deep copy of board*/
@@ -3423,6 +3447,12 @@ pthread_mutex_init (&super_lock, NULL);
       /*TEMP  This needs to be deep copy of board*/
       p_unmake_move(p_board, arg_ball);
       
+
+	pthread_mutex_lock(& nodes_visited_lock);
+
+	(*nodes_visited)+=arg_ball->nodes_visited;
+	pthread_mutex_unlock(& nodes_visited_lock);
+
 
       //      move_sp=arg_ball->move_sp;
       free(move_stack_copy);
@@ -3486,8 +3516,9 @@ pthread_mutex_init (&super_lock, NULL);
     /*    if ((num_moves<=1) ||(move_sp-move_stack <= 1)) {
       break; // just one move to play 
       }*/
-    
-    printf(" %5lu %3d %+1.2f ", nodes, depth, best_score / 100.0);
+  total_nodes_visited+=(*nodes_visited);
+  fprintf(stderr, "Nodes visited here was %d, total was %d\n", *nodes_visited,total_nodes_visited);
+    printf(" %3d %+1.2f ", depth, best_score / 100.0);
     print_move_san(move);
     puts("");
     
@@ -3500,6 +3531,7 @@ pthread_mutex_init (&super_lock, NULL);
     beta = best_score + 33;
   }
   move_sp = move_stack;
+
   return move;
 }
 
@@ -3616,10 +3648,10 @@ int main(int argc, char *argv[])
                                 memset(history, 0, sizeof(history));
 
 				if (argc>2 && atoi(argv[2])==1 && random_countdown<=0){
-				  move=p_root_search(maxdepth);
+				  move=p_root_search(maxdepth, write_time);
 				    }
 				else{
-                                move = root_search(maxdepth);
+				  move = root_search(maxdepth, write_time);
 				    }
 				fprintf(stderr,"Did move %d\n", ply);
 				random_countdown-=1;
@@ -3630,7 +3662,7 @@ int main(int argc, char *argv[])
 			//	fprintf(write_time, "%f\n", ((double)end-start)/CLOCKS_PER_SEC);
 			fprintf(write_time, "%f\n", end_c-start_c);
 
-                        if (!move || ply >= 160) {
+                        if (!move || ply >= GAME_LENGTH) {
                                 printf("game over: ");
 				fprintf(write_time, "game over: ");
                                 compute_attacks();
