@@ -3405,8 +3405,9 @@ pthread_mutex_init (&super_lock, NULL);
     fprintf(stderr, "Depth %d: First half time %f nodes is %d\n", depth, mid-top, mid_nodes-top_nodes);
     fprintf(write_first_time, "%f\n", mid-top);
     fprintf(write_first_count, "%d\n", mid_nodes-top_nodes);
-    }
     fprintf(write_divergence, "0 %f\n", 4*(mid-top));
+    }
+
     parallel_code=1;
     //for(m=move_sp-1; m>=move_stack +1; m--){
       cilk_for (m=move_stack+1;m < move_sp;m++) {
@@ -3771,7 +3772,8 @@ fclose(write_second_time);
 fclose(write_count);
 fclose(write_first_count);
 fclose(write_second_count);
-fclose(write_divergence);
+ if(atoi(argv[2])==1)
+   fclose(write_divergence);
         return 0;
 }
 
