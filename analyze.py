@@ -65,19 +65,29 @@ def analyzeCount(filename):
     print("Average time from file " + filename + " was "+str(float(mySum)/numTurns) )
     return mySum
 
-def analyzeDivergence(filename):
+def analyzeDivergence(filename, numCoresString):
+    numCores=float(numCoresString)
     inFile=open(filename, "r");
     lines=inFile.readlines();
-    sums=[0,0,0,0]
+ #   sums=[]
+ 
+    partialUsefulSum=0
+    usefulSum=0
+    totalSum=0
     for line in lines:
         words=line.split()
         if words[0]=="fence":
-            utilization=sum(sums)/(4*float(words[1]))
+            utilization=partialUsefulSum/(numCores*float(words[1]))
+    #        utilization=sum(sums)/(4*float(words[1]))
             print("Utilization was " + str(utilization))
-            sums=[0,0,0,0]
+            totalSum+=numCores*float(words[1])
+            partialUsefulSum=0
+   #         sums=[0,0,0,0]
         else:
-            sums[int(words[0])]+=float(words[1])
-
+  #          sums[int(words[0])]+=float(words[1])
+            partialUsefulSum+=float(words[1])
+            usefulSum+=float(words[1])
+    print("Total utilization was " + str(usefulSum/totalSum))
 def main():
     print("Comparing "+sys.argv[1]+ " and " + sys.argv[2] + ":\n")
     print(str(compareGames(sys.argv[1], sys.argv[2])))
@@ -93,15 +103,18 @@ def main():
     firstCount2=analyzeCount("count_first2.dat")
     secondCount1=analyzeCount("count_second1.dat")
     secondCount2=analyzeCount("count_second2.dat")
-    analyzeDivergence("divergence2.dat")
+    analyzeDivergence("divergence2.dat", sys.argv[3])
 
     print("Overall speedup was " + str(totalTime1/totalTime2))
     print("Overall efficiency speedup was " + str((totalCount2/totalTime2)/(totalCount1/totalTime1)))
+    print("Work ratio was " + str(float(totalCount1)/totalCount2))
+    
+    """
     print("First Branch efficiency speedup was " + str((firstCount2/firstTime2)/(firstCount1/firstTime1)))
     print("Second Branch efficiency speedup was " + str((secondCount2/secondTime2)/(secondCount1/secondTime1)))
     print("Fraction in first branch for serial was " + str(firstTime1/secondTime1))
     print("Fraction in first branch for parallel was " + str(firstTime2/secondTime2))
-    
+    """
     
     #print("Overall efficiency 1 was " +str(totalCount1/totalTime1))
     

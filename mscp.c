@@ -2979,7 +2979,7 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
 }
 
 
-static int p_vsearch(int depth, int alpha, int beta, int* nodes_visited)
+static int p_vsearch(int depth, int alpha, int beta, int* nodes_visited, FILE*write_divergence)
 {
         int                             best_score = -INF;
         int                             best_move = 0;
@@ -3066,7 +3066,7 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
                 if (newdepth <= 0) {
 		  score = -qsearch(-beta, -alpha);
                 } else {
-		  score = -p_vsearch(newdepth, -beta, -alpha, nodes_visited);
+		  score = -p_vsearch(newdepth, -beta, -alpha, nodes_visited, write_divergence);
                 }
                 if (score < -29000) score++;    /* adjust for mate-in-n */
 		proceed=0;
@@ -3096,8 +3096,11 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 	//	for(k=move_sp; k>moves; k--){
 	cilk_for(k=moves+1; k<=move_sp; k++){
 	  //	while (move_sp > moves) {
-                int newdepth;
-                int move;
+	  double begin=currentSeconds();
+	  double end;
+
+	  int newdepth;
+	  int move;
 		int go_on=1;
 		byte* p_board=(byte*) malloc(67*sizeof(byte));
 		int j=0;
@@ -3218,6 +3221,9 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 
 		}//end go_on
 	
+
+		end=currentSeconds();
+fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);    
 		/*		if(go_on){
 
 		  
@@ -3230,6 +3236,8 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		  //	k=moves;
 		  //move_sp = moves; /* fail high: skip remaining moves */
 		//end go_on
+
+
         }
 	parallel_code=0;
 	
@@ -3352,7 +3360,7 @@ pthread_mutex_init (&super_lock, NULL);
       if (depth-1 > 0) {
 	
 	/*TEMP change*/
-	score = -p_vsearch(depth-1, -beta, -alpha, nodes_visited);
+	score = -p_vsearch(depth-1, -beta, -alpha, nodes_visited, write_divergence);
       } else {
 	
 	score = -qsearch(-beta, -alpha);
@@ -3405,7 +3413,7 @@ pthread_mutex_init (&super_lock, NULL);
     fprintf(stderr, "Depth %d: First half time %f nodes is %d\n", depth, mid-top, mid_nodes-top_nodes);
     fprintf(write_first_time, "%f\n", mid-top);
     fprintf(write_first_count, "%d\n", mid_nodes-top_nodes);
-    fprintf(write_divergence, "0 %f\n", 4*(mid-top));
+    //fprintf(write_divergence, "0 %f\n", 4*(mid-top));
     }
 
     parallel_code=1;

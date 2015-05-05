@@ -19,4 +19,4 @@ echo "Did first run."
 
 ./mscp $1 1 $3 $4 < inputBoth.txt > out2.txt
 
-python analyze.py out1.txt out2.txt
+python analyze.py out1.txt out2.txt $2
