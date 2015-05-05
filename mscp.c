@@ -97,7 +97,7 @@ static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 #define FINAL_DEPTH 7
 static int maxdepth = RANDOM_DEPTH;                /* Maximum search depth */
 static int parallel_code=0;
-#define RANDOM_COUNTDOWN_START 10
+#define RANDOM_COUNTDOWN_START 6
 #define GAME_LENGTH 12
 static int random_countdown=RANDOM_COUNTDOWN_START;
 static int total_nodes_visited=0;
@@ -3298,6 +3298,7 @@ static int p_root_search(int maxdepth, FILE* write_time, FILE*write_first_time, 
   
   initialize=currentSeconds();
 
+  //  fprintf(write_divergence, "blam 0");
   pthread_mutex_init (&main_lock, NULL);
 pthread_mutex_init (&nodes_visited_lock, NULL);
 
@@ -3405,6 +3406,7 @@ pthread_mutex_init (&super_lock, NULL);
     fprintf(write_first_time, "%f\n", mid-top);
     fprintf(write_first_count, "%d\n", mid_nodes-top_nodes);
     }
+    fprintf(write_divergence, "0 %f\n", 4*(mid-top));
     parallel_code=1;
     //for(m=move_sp-1; m>=move_stack +1; m--){
       cilk_for (m=move_stack+1;m < move_sp;m++) {
