@@ -65,6 +65,19 @@ def analyzeCount(filename):
     print("Average time from file " + filename + " was "+str(float(mySum)/numTurns) )
     return mySum
 
+def analyzeDivergence(filename):
+    inFile=open(filename, "r");
+    lines=inFile.readlines();
+    sums=[0,0,0,0]
+    for line in lines:
+        words=line.split()
+        if words[0]=="fence":
+            utilization=sum(sums)/(4*float(words[1]))
+            print("Utilization was " + str(utilization))
+            sums=[0,0,0,0]
+        else:
+            sums[int(words[0])]+=float(words[1])
+
 def main():
     print("Comparing "+sys.argv[1]+ " and " + sys.argv[2] + ":\n")
     print(str(compareGames(sys.argv[1], sys.argv[2])))
@@ -80,7 +93,7 @@ def main():
     firstCount2=analyzeCount("count_first2.dat")
     secondCount1=analyzeCount("count_second1.dat")
     secondCount2=analyzeCount("count_second2.dat")
-
+    analyzeDivergence("divergence2.dat")
 
     print("Overall speedup was " + str(totalTime1/totalTime2))
     print("Overall efficiency speedup was " + str((totalCount2/totalTime2)/(totalCount1/totalTime1)))

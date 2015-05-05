@@ -3280,7 +3280,7 @@ void array_compare(byte* arr1, byte* arr2, int len, char* message){
 
 }
 
-static int p_root_search(int maxdepth, FILE* write_time, FILE*write_first_time, FILE*write_second_time, FILE*write_count, FILE*write_first_count, FILE*write_second_count)
+static int p_root_search(int maxdepth, FILE* write_time, FILE*write_first_time, FILE*write_second_time, FILE*write_count, FILE*write_first_count, FILE*write_second_count, FILE* write_divergence)
 {
   int             depth;
   int             score, best_score;
@@ -3410,7 +3410,8 @@ pthread_mutex_init (&super_lock, NULL);
       cilk_for (m=move_stack+1;m < move_sp;m++) {
       //fprintf(stderr,"move_stack was %d, m was %d and move_sp was %d\n", move_stack, m, move_sp);
       
-      
+	double begin=currentSeconds();
+	double end;
       int leave_loop=0;
       int local_score;
       /*      byte*p_board=board;*/
@@ -3546,7 +3547,9 @@ pthread_mutex_unlock(& nodes_visited_lock);
 
       //      pthread_mutex_unlock (&super_lock);            
       }//while proceed
-      
+  
+      end=currentSeconds();
+      fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);    
 
        /* continue with next move */
     }
@@ -3577,6 +3580,7 @@ pthread_mutex_unlock(& nodes_visited_lock);
       fprintf(stderr, "Nodes visited here was %d, total was %d\n", *nodes_visited,total_nodes_visited);
       fprintf(write_second_time, "%f\n", bottom-mid);
       fprintf(write_second_count, "%d\n", bottom_nodes-mid_nodes);
+  
     }
 
 
@@ -3586,7 +3590,7 @@ pthread_mutex_unlock(& nodes_visited_lock);
   bottom=currentSeconds();
   fprintf(stderr, "Total time was was %f\n", bottom-initialize);
   fprintf(write_count, "%d\n", *nodes_visited);
- 
+  fprintf(write_divergence, "fence %f\n",/*__cilkrts_get_worker_number(),*/ bottom-initialize);
 
 
   return move;
@@ -3622,7 +3626,7 @@ int main(int argc, char *argv[])
         int move;
 	clock_t start, end;
 	double start_c, end_c;
-	FILE*write_time, *write_first_time, *write_second_time, *write_first_count, *write_second_count, *write_count;
+	FILE*write_time, *write_first_time, *write_second_time, *write_first_count, *write_second_count, *write_count, *write_divergence;
 
 	fprintf(stderr,"ticks Per Seconds is %f", ticksPerSecond()); 
 	if (argc>2 && atoi(argv[2])==1){
@@ -3632,6 +3636,7 @@ int main(int argc, char *argv[])
 	  write_count=fopen("count2.dat", "w");
 	  write_first_count=fopen("count_first2.dat", "w");
 	  write_second_count=fopen("count_second2.dat", "w");
+	  write_divergence=fopen("divergence2.dat", "w");
 	}
 	else{
 	  write_time=fopen("time1.dat", "w");
@@ -3715,7 +3720,7 @@ int main(int argc, char *argv[])
 		    memset(history, 0, sizeof(history));
 		    
 		    if (argc>2 && atoi(argv[2])==1 && random_countdown<=0){
-		      move=p_root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
+		      move=p_root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count, write_divergence);
 		    }
 		    else{
 		      move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
@@ -3764,6 +3769,7 @@ fclose(write_second_time);
 fclose(write_count);
 fclose(write_first_count);
 fclose(write_second_count);
+fclose(write_divergence);
         return 0;
 }
 
