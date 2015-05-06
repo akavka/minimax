@@ -91,7 +91,7 @@ def analyzeDivergence(filename, numCoresString):
             usefulSum+=float(words[1])
     print("Total utilization was " + str(usefulSum/totalSum))
 def main():
-    latepath=argv[4]
+    latepath=sys.argv[4]+sys.argv[5]
     print("Comparing "+sys.argv[1]+ " and " + sys.argv[2] + ":\n")
     print(str(compareGames(sys.argv[1], sys.argv[2])))
     totalTime1=analyzeOutput(latepath+"time1.dat")

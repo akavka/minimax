@@ -3642,33 +3642,33 @@ int main(int argc, char *argv[])
 
 
 	if (argc>2 && atoi(argv[2])==1){
-	  sprintf(filename, "%stime2.dat", argv[5]);
+	  sprintf(filename, "%s%stime2.dat", argv[5],argv[6]);
 	  write_time=fopen(filename, "w");
-	  sprintf(filename, "%stime_first2.dat", argv[5]);
+	  sprintf(filename, "%s%stime_first2.dat", argv[5],argv[6]);
 	  write_first_time=fopen(filename, "w");
-	  sprintf(filename, "%stime_second2.dat", argv[5]);
+	  sprintf(filename, "%s%stime_second2.dat", argv[5],argv[6]);
 	  write_second_time=fopen(filename, "w");
-sprintf(filename, "%scount2.dat", argv[5]);
+sprintf(filename, "%s%scount2.dat", argv[5],argv[6]);
 	  write_count=fopen(filename, "w");
-sprintf(filename, "%scount_first2.dat", argv[5]);
+sprintf(filename, "%s%scount_first2.dat", argv[5],argv[6]);
 	  write_first_count=fopen(filename, "w");
-sprintf(filename, "%scount_second2.dat", argv[5]);
+sprintf(filename, "%s%scount_second2.dat", argv[5],argv[6]);
 	  write_second_count=fopen(filename, "w");
-sprintf(filename, "%sdivergence2.dat", argv[5]);
+sprintf(filename, "%s%sdivergence2.dat", argv[5],argv[6]);
 	  write_divergence=fopen(filename, "w");
 	}
 	else{
-	  sprintf(filename, "%stime1.dat", argv[5]);
+	  sprintf(filename, "%s%stime1.dat", argv[5],argv[6]);
 	  write_time=fopen(filename, "w");
-	  sprintf(filename, "%stime_first1.dat", argv[5]);
+	  sprintf(filename, "%s%stime_first1.dat", argv[5],argv[6]);
 	  write_first_time=fopen(filename, "w");
-	  sprintf(filename, "%stime_second1.dat", argv[5]);
+	  sprintf(filename, "%s%stime_second1.dat", argv[5],argv[6]);
 	  write_second_time=fopen(filename, "w");
-	  sprintf(filename, "%scount1.dat", argv[5]);
+	  sprintf(filename, "%s%scount1.dat", argv[5],argv[6]);
 	  write_count=fopen(filename, "w");
-	  sprintf(filename, "%scount_first1.dat", argv[5]);
+	  sprintf(filename, "%s%scount_first1.dat", argv[5],argv[6]);
 	  write_first_count=fopen(filename, "w");
-	  sprintf(filename, "%scount_second1.dat", argv[5]);
+	  sprintf(filename, "%s%scount_second1.dat", argv[5],argv[6]);
 	  write_second_count=fopen(filename, "w");
 	}
 	fprintf(stderr, "Started.\n");
