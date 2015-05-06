@@ -1607,7 +1607,7 @@ static int qsearch(int alpha, int beta)
         struct move                     *moves;
 
 
-        nodes++;
+        
 
 
 
@@ -1627,7 +1627,7 @@ if (parallel_code){
         qsort(moves, move_sp - moves, sizeof(*moves), cmp_move);
         while (move_sp > moves) {
                 int move;
-
+		nodes++;
                 move_sp--;
                 move = move_sp->move;
                 make_move(move);
@@ -1681,7 +1681,7 @@ if (parallel_code){
         int                             i, count=0;
 	*/
 
-	  nodes++;
+	  
 
 
 
@@ -1724,6 +1724,7 @@ if (parallel_code){
          *  loop over all moves
          */
         while (move_sp > moves) {
+	  nodes++;
                 int newdepth;
                 int move;
                 move_sp--;
@@ -2802,7 +2803,7 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball *arg_ball)
         struct move                     *moves;
 
 	/*SIMPLE reduced shared variables*/
-        arg_ball->nodes_visited++;
+
 
 
 	/*SIMPLE no hash
@@ -2817,6 +2818,8 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball *arg_ball)
         qsort(moves, arg_ball->move_sp - moves, sizeof(*moves), cmp_move);
         while (arg_ball->move_sp > moves) {
                 int move;
+
+        arg_ball->nodes_visited++;
 
                 arg_ball->move_sp--;
                 move = arg_ball->move_sp->move;
@@ -2897,7 +2900,7 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
         history[best_move] |= PRESCORE_HASHMOVE;*/
 	
         incheck = arg_ball->enemy->attack[arg_ball->friend->king];
-	arg_ball->nodes_visited++;
+	
         /*
          *  p_generate moves
          */
@@ -2913,8 +2916,11 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
          *  loop over all moves
          */
         while (arg_ball->move_sp > moves) {
+
+
                 int newdepth;
                 int move;
+	  arg_ball->nodes_visited++;
                 arg_ball->move_sp--;
                 move = arg_ball->move_sp->move;
                 p_make_move(move, p_board, arg_ball);
@@ -3029,7 +3035,7 @@ static int p_vsearch(int depth, int alpha, int beta, int* nodes_visited, FILE*wr
 
         history[best_move] |= PRESCORE_HASHMOVE;*/
 
-	(*nodes_visited)++;	
+
 	pthread_mutex_init(&main_lock, NULL);
 pthread_mutex_init(&nodes_visited_lock, NULL);
         incheck = enemy->attack[friend->king];
@@ -3051,7 +3057,7 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		
                 int newdepth;
                 int move;
-	
+	(*nodes_visited)++;		
 	
                 move_sp--;
                 move = move_sp->move;
@@ -3111,7 +3117,7 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		ball*arg_ball;
 
 
-
+	(*nodes_visited)++;		
 		//		pthread_mutex_lock(&main_lock);
 		local_alpha=alpha;
 		//pthread_mutex_unlock(&main_lock);		  
