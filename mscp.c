@@ -101,7 +101,7 @@ static int parallel_code=0;
 #define GAME_LENGTH 12
 static int random_countdown=RANDOM_COUNTDOWN_START;
 static int total_nodes_visited=0;
-static const char late_path[]= "/home/minimax/";
+static const char late_path[]= "/home/akavka/minimax/";
 
 
 /* Constants for static move ordering (pre-scores) */
@@ -1312,7 +1312,7 @@ static void load_book(char *filename)
         FILE                    *fp;
         char                    line[128], *s;
         int                     num, move;
-
+	
         booksize = 0;
 
         fp = fopen(filename, "r");
@@ -2055,7 +2055,7 @@ static void cmd_new(char *dummy)
 {
   random_countdown=RANDOM_COUNTDOWN_START;
   setup_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
-        load_book("book.txt");
+  //load_book("book.txt");
         computer[0] = 0;
         computer[1] = 1;
         
@@ -3642,33 +3642,33 @@ int main(int argc, char *argv[])
 
 
 	if (argc>2 && atoi(argv[2])==1){
-	  sprintf(filename, "%stime2.dat", late_path);
+	  sprintf(filename, "%stime2.dat", argv[5]);
 	  write_time=fopen(filename, "w");
-	  sprintf(filename, "%stime_first2.dat", late_path);
+	  sprintf(filename, "%stime_first2.dat", argv[5]);
 	  write_first_time=fopen(filename, "w");
-	  sprintf(filename, "%stime_second2.dat", late_path);
+	  sprintf(filename, "%stime_second2.dat", argv[5]);
 	  write_second_time=fopen(filename, "w");
-sprintf(filename, "%scount2.dat", late_path);
+sprintf(filename, "%scount2.dat", argv[5]);
 	  write_count=fopen(filename, "w");
-sprintf(filename, "%scount_first.dat", late_path);
+sprintf(filename, "%scount_first2.dat", argv[5]);
 	  write_first_count=fopen(filename, "w");
-sprintf(filename, "%count_second2.dat", late_path);
+sprintf(filename, "%scount_second2.dat", argv[5]);
 	  write_second_count=fopen(filename, "w");
-sprintf(filename, "%sdivergence2.dat", late_path);
+sprintf(filename, "%sdivergence2.dat", argv[5]);
 	  write_divergence=fopen(filename, "w");
 	}
 	else{
-	  sprintf(filename, "%stime1.dat", late_path);
+	  sprintf(filename, "%stime1.dat", argv[5]);
 	  write_time=fopen(filename, "w");
-	  sprintf(filename, "%stime_first1.dat", late_path);
+	  sprintf(filename, "%stime_first1.dat", argv[5]);
 	  write_first_time=fopen(filename, "w");
-	  sprintf(filename, "%stime_second1.dat", late_path);
+	  sprintf(filename, "%stime_second1.dat", argv[5]);
 	  write_second_time=fopen(filename, "w");
-	  sprintf(filename, "%scount1.dat", late_path);
+	  sprintf(filename, "%scount1.dat", argv[5]);
 	  write_count=fopen(filename, "w");
-	  sprintf(filename, "%scount_first1.dat", late_path);
+	  sprintf(filename, "%scount_first1.dat", argv[5]);
 	  write_first_count=fopen(filename, "w");
-	  sprintf(filename, "%scount_second1.dat", late_path);
+	  sprintf(filename, "%scount_second1.dat", argv[5]);
 	  write_second_count=fopen(filename, "w");
 	}
 	fprintf(stderr, "Started.\n");

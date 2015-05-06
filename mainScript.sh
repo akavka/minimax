@@ -1,8 +1,8 @@
 #!/bin/bash
 source /afs/cs/academic/class/15210-f14/cilk/gccvars_bash.sh
 
-latepath=/home/minimax/
-
+latepath=/home/akavka/minimax/
+echo Arguments were $1 $2 $3 $4
 if [ $# -ge 2 ]
   then
     export CILK_NWORKERS=$2
@@ -15,10 +15,10 @@ fi
 
 #gcc -fcilkplus -lcilkrts  -o  "$latepath"mscp "$latepath"mscp.c
 #make
-./"$latepath"mscp $1 0 $3 $4 < "$latepath"inputBoth.txt > "$latepath"out1.txt
+"$latepath"mscp $1 0 $3 $4 $latepath < "$latepath"inputBoth.txt > "$latepath"out1.txt
 
 echo "Did first run."
 
-./"$latepath"mscp $1 1 $3 $4 < "$latepath"inputBoth.txt > "$latepath"out2.txt
+"$latepath"mscp $1 1 $3 $4 $latepath < "$latepath"inputBoth.txt > "$latepath"out2.txt
 
-python "$latepath"analyze.py "$latepath"out1.txt "$latepath"out2.txt $2
+python "$latepath"analyze.py "$latepath"out1.txt "$latepath"out2.txt $2 $latepath

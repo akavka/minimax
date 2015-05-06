@@ -3,4 +3,4 @@
 #PBS -l walltime=0:6:00
 
 cd $PBS_O_WORKDIR
-pbsdsh -u $PBS_O_WORKDIR/mainScript.sh
+pbsdsh -u $PBS_O_WORKDIR/mainScript.sh $arg1 $arg2 $arg3 $arg4
