@@ -1,0 +1,6 @@
+#!/bin/sh
+#PBS -l nodes=1:ppn=24
+#PBS -l walltime=0:6:00
+
+cd $PBS_O_WORKDIR
+pbsdsh -u $PBS_O_WORKDIR/exe_name
