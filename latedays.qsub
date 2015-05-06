@@ -1,6 +1,6 @@
 #!/bin/sh
 #PBS -l nodes=1:ppn=24
-#PBS -l walltime=0:6:00
+#PBS -l walltime=0:8:00
 
 cd $PBS_O_WORKDIR
 pbsdsh -u /home/akavka/minimax/mainScript.sh $arg1 $arg2 $arg3 $arg4 $arg5
