@@ -1,5 +1,7 @@
 #!/usr/bin/python
 import sys
+latepath="/home/minimax/"
+
 def compareGames(inFile1, inFile2):
     in1=open(inFile1, "r")
     in2=open(inFile2,"r")
@@ -91,19 +93,19 @@ def analyzeDivergence(filename, numCoresString):
 def main():
     print("Comparing "+sys.argv[1]+ " and " + sys.argv[2] + ":\n")
     print(str(compareGames(sys.argv[1], sys.argv[2])))
-    totalTime1=analyzeOutput("time1.dat")
-    totalTime2=analyzeOutput("time2.dat")
-    firstTime1=analyzeTime("time_first1.dat")
-    firstTime2=analyzeTime("time_first2.dat")
-    secondTime1=analyzeTime("time_second1.dat")
-    secondTime2=analyzeTime("time_second2.dat")
-    totalCount1=analyzeCount("count1.dat")
-    totalCount2=analyzeCount("count2.dat")
-    firstCount1=analyzeCount("count_first1.dat")
-    firstCount2=analyzeCount("count_first2.dat")
-    secondCount1=analyzeCount("count_second1.dat")
-    secondCount2=analyzeCount("count_second2.dat")
-    analyzeDivergence("divergence2.dat", sys.argv[3])
+    totalTime1=analyzeOutput(latepath+"time1.dat")
+    totalTime2=analyzeOutput(latepath+"time2.dat")
+    firstTime1=analyzeTime(latepath+"time_first1.dat")
+    firstTime2=analyzeTime(latepath+"time_first2.dat")
+    secondTime1=analyzeTime(latepath+"time_second1.dat")
+    secondTime2=analyzeTime(latepath+"time_second2.dat")
+    totalCount1=analyzeCount(latepath+"count1.dat")
+    totalCount2=analyzeCount(latepath+"count2.dat")
+    firstCount1=analyzeCount(latepath+"count_first1.dat")
+    firstCount2=analyzeCount(latepath+"count_first2.dat")
+    secondCount1=analyzeCount(latepath+"count_second1.dat")
+    secondCount2=analyzeCount(latepath+"count_second2.dat")
+    analyzeDivergence(latepath+"divergence2.dat", sys.argv[3])
 
     print("Overall speedup was " + str(totalTime1/totalTime2))
     print("Overall efficiency speedup was " + str((totalCount2/totalTime2)/(totalCount1/totalTime1)))
@@ -117,13 +119,13 @@ def main():
     """
     
     #print("Overall efficiency 1 was " +str(totalCount1/totalTime1))
-    
+    """
     print("First efficiency 1 was " +str(firstCount1/firstTime1))
     print("Second efficiency 1 was " +str(secondCount1/secondTime1))
     #print("Overall efficiency 2 was " +str(totalCount2/totalTime2))
     print("First efficiency 2 was " +str(firstCount2/firstTime2))
     print("Second efficiency 2 was " +str(secondCount2/secondTime2))
-
+    """
 
 if __name__=="__main__":
     main()
