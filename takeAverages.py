@@ -148,15 +148,18 @@ def main():
     for i in range(lowerRange,upperRange+1):
         processAFile(i,cores,utilization, speedup, workEfficiency, searchOverhead, loss)
     
-    print("Cores:\n")
-    for core in cores:
-        print(str(core))
+
+
+
     
-    print ("Speedup:\n")
+    print ("Core\tSpeedup\tUtilization\tEffiencySpeedup\tSearchOverhead\tLoss")
     for core in cores:
         meanSpeed=str(sum(speedup[core])/len(speedup[core]))
         meanUtil=str(sum(utilization[core])/len(speedup[core]))
-        print(meanSpeed+"\t"+ meanUtil)
+        meanEff=str(sum(workEfficiency[core])/len(workEfficiency[core]))
+        meanSearch=str(sum(searchOverhead[core])/len(searchOverhead[core]))
+        meanLoss=str(sum(loss[core])/len(loss[core]))
+        print(str(core)+"\t"+meanSpeed+"\t"+ meanUtil+ "\t" + meanEff+"\t"+meanSearch+"\t"+meanLoss)
 
 
 

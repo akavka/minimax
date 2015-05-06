@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+if [1 -eq 0 ]; then
 mkdir safe_7470_1_7_13
 qsub latedays.qsub -v arg1=7470,arg2=1,arg3=7,arg4=13,arg5=safe_7470_1_7_13/
 
@@ -153,7 +153,6 @@ qsub latedays.qsub -v arg1=7478,arg2=8,arg3=7,arg4=13,arg5=safe_7478_8_7_13/
 mkdir safe_7479_8_7_13
 qsub latedays.qsub -v arg1=7479,arg2=8,arg3=7,arg4=13,arg5=safe_7479_8_7_13/
 
-
 mkdir safe_7470_12_7_13
 qsub latedays.qsub -v arg1=7470,arg2=12,arg3=7,arg4=13,arg5=safe_7470_12_7_13/
 
@@ -183,3 +182,35 @@ qsub latedays.qsub -v arg1=7478,arg2=12,arg3=7,arg4=13,arg5=safe_7478_12_7_13/
 
 mkdir safe_7479_12_7_13
 qsub latedays.qsub -v arg1=7479,arg2=12,arg3=7,arg4=13,arg5=safe_7479_12_7_13/
+
+fi
+
+mkdir safe_7470_24_7_13
+qsub latedays.qsub -v arg1=7470,arg2=24,arg3=7,arg4=13,arg5=safe_7470_24_7_13/
+
+mkdir safe_7471_24_7_13
+qsub latedays.qsub -v arg1=7471,arg2=24,arg3=7,arg4=13,arg5=safe_7471_24_7_13/
+
+mkdir safe_7472_24_7_13
+qsub latedays.qsub -v arg1=7472,arg2=24,arg3=7,arg4=13,arg5=safe_7472_24_7_13/
+
+mkdir safe_7473_24_7_13
+qsub latedays.qsub -v arg1=7473,arg2=24,arg3=7,arg4=13,arg5=safe_7473_24_7_13/
+
+mkdir safe_7474_24_7_13
+qsub latedays.qsub -v arg1=7474,arg2=24,arg3=7,arg4=13,arg5=safe_7474_24_7_13/
+
+mkdir safe_7475_24_7_13
+qsub latedays.qsub -v arg1=7475,arg2=24,arg3=7,arg4=13,arg5=safe_7475_24_7_13/
+
+mkdir safe_7476_24_7_13
+qsub latedays.qsub -v arg1=7476,arg2=24,arg3=7,arg4=13,arg5=safe_7476_24_7_13/
+
+mkdir safe_7477_24_7_13
+qsub latedays.qsub -v arg1=7477,arg2=24,arg3=7,arg4=13,arg5=safe_7477_24_7_13/
+
+mkdir safe_7478_24_7_13
+qsub latedays.qsub -v arg1=7478,arg2=24,arg3=7,arg4=13,arg5=safe_7478_24_7_13/
+
+mkdir safe_7479_24_7_13
+qsub latedays.qsub -v arg1=7479,arg2=24,arg3=7,arg4=13,arg5=safe_7479_24_7_13/
