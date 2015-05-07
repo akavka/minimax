@@ -1606,10 +1606,10 @@ static int qsearch(int alpha, int beta)
         int                             score;
         struct move                     *moves;
 
-
+	nodes++;
         
 
-
+	
 
 if (parallel_code){
 	  fprintf(stderr, "Calling serial version of qsearch during parallel code.\n");
@@ -1627,7 +1627,7 @@ if (parallel_code){
         qsort(moves, move_sp - moves, sizeof(*moves), cmp_move);
         while (move_sp > moves) {
                 int move;
-		nodes++;
+		//nodes++;
                 move_sp--;
                 move = move_sp->move;
                 make_move(move);
@@ -1681,7 +1681,7 @@ if (parallel_code){
         int                             i, count=0;
 	*/
 
-	  
+//nodes++;
 
 
 
@@ -1724,7 +1724,7 @@ if (parallel_code){
          *  loop over all moves
          */
         while (move_sp > moves) {
-	  nodes++;
+	  //nodes++;
                 int newdepth;
                 int move;
                 move_sp--;
@@ -2804,8 +2804,8 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball *arg_ball)
 
 	/*SIMPLE reduced shared variables*/
 
-
-
+        arg_ball->nodes_visited++;
+	
 	/*SIMPLE no hash
 	  hash_stack[arg_ball->ply] = compute_hash();*/
         best_score = p_evaluate(p_board, arg_ball);
@@ -2819,7 +2819,7 @@ static int p_qsearch(int alpha, int beta, byte* p_board, ball *arg_ball)
         while (arg_ball->move_sp > moves) {
                 int move;
 
-        arg_ball->nodes_visited++;
+		//        arg_ball->nodes_visited++;
 
                 arg_ball->move_sp--;
                 move = arg_ball->move_sp->move;
@@ -2873,7 +2873,7 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
 	*/
 
 	
-
+	//arg_ball->nodes_visited++;
 
 
 	/*SIMPLE no hash stack
@@ -2920,7 +2920,7 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
 
                 int newdepth;
                 int move;
-	  arg_ball->nodes_visited++;
+		//     	arg_ball->nodes_visited++;
                 arg_ball->move_sp--;
                 move = arg_ball->move_sp->move;
                 p_make_move(move, p_board, arg_ball);
@@ -3057,7 +3057,7 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		
                 int newdepth;
                 int move;
-	(*nodes_visited)++;		
+			(*nodes_visited)++;		
 	
                 move_sp--;
                 move = move_sp->move;
@@ -3117,7 +3117,7 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		ball*arg_ball;
 
 
-	(*nodes_visited)++;		
+		//	(*nodes_visited)++;		
 		//		pthread_mutex_lock(&main_lock);
 		local_alpha=alpha;
 		//pthread_mutex_unlock(&main_lock);		  
