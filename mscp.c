@@ -144,6 +144,7 @@ typedef struct ball {
   struct move *move_sp;
   signed char *undo_sp;
   int nodes_visited;
+  struct move* copy_move_stack;
 }ball;
 
 
@@ -2744,12 +2745,13 @@ static ball* setup(struct side * arg_white, struct side* arg_black, struct side*
   result->white=(*arg_white);
   result->black=(*arg_black);
   result->ply=arg_ply;
-  result->caps=caps;
-  result->ply=ply;
+  result->caps=arg_caps;
+  //result->ply=ply;
   memcpy(copy_move_stack, move_stack, 1024*sizeof(struct move));
   result->move_sp=copy_move_stack+offset;
   result->undo_sp=(signed char*) malloc(6*1024*sizeof(signed char));
   result->nodes_visited=0;
+  result->copy_move_stack=copy_move_stack;
   /*  if ((*((int*)(result->move_sp)))!=(*((int*)(move_sp)))){
     fprintf(stderr,"move_sp wasn't copied correctly\n");
   }
@@ -2934,7 +2936,38 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
                 if (newdepth <= 0) {
 		  /*TEMP should be deep copy of p_board? or not parallelized?*/
 		  score = -p_qsearch(-beta, -alpha, p_board, arg_ball);
-                } else {
+                } 
+
+				else if (newdepth>=2){
+
+		  ball* arg_ball2;
+		  byte* p_board2=(byte*) malloc(67*sizeof(byte));
+		  int j;
+		  struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
+		  fprintf(stderr, "About to setup\n");
+
+		  arg_ball2=setup(&(arg_ball->white), &(arg_ball->black), (arg_ball->friend), (arg_ball->enemy), arg_ball->ply, arg_ball->caps, move_stack_copy, arg_ball->move_sp-arg_ball->copy_move_stack);
+		  
+
+
+		  for (j=0; j<67; j++){
+		    p_board2[j]=p_board[j];
+		  }
+		  
+		  
+		  score = cilk_spawn p_child_search(newdepth, -beta, -alpha, p_board2, arg_ball2);
+		  score*=-1;
+		  fprintf(stderr, "Finished with cilk_spawn\n");
+		  
+		
+		//		  free(p_board2);
+		// free(arg_ball2->undo_sp);
+		// free(move_stack_copy);
+		// free(arg_ball2);
+		  //cilk_sync;		  		  
+		}
+
+		else {
 
 		  /*TEMP should be deep copy of p_board or note parallelized?*/
 		  score = -p_child_search(newdepth, -beta, -alpha, p_board, arg_ball);
@@ -3087,7 +3120,7 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 
                 if (score < beta) continue;
 
-		                move_sp = moves; /* fail high: skip remaining moves */
+		move_sp = moves; /* fail high: skip remaining moves */
 		
 		
         }
@@ -3310,6 +3343,7 @@ static int p_root_search(int maxdepth, FILE* write_time, FILE*write_first_time, 
   int top_nodes, mid_nodes, bottom_nodes;
   int *nodes_visited=(int*)malloc(sizeof(int));
   
+
   initialize=currentSeconds();
 
   //  fprintf(write_divergence, "blam 0");
@@ -3429,28 +3463,28 @@ pthread_mutex_init (&super_lock, NULL);
       
 	double begin=currentSeconds();
 	double end;
-      int leave_loop=0;
-      int local_score;
-      /*      byte*p_board=board;*/
-
-      while(leave_loop==0){
+	int leave_loop=0;
+	int local_score;
+	/*      byte*p_board=board;*/
+	
+	while(leave_loop==0){
 
 	//	pthread_mutex_lock(&main_lock);
-      int local_alpha=alpha;
-      int local_beta=beta;
-      //pthread_mutex_unlock(&main_lock);
-      //pthread_mutex_lock (&super_lock);
-      leave_loop=1;
-      struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
+	  int local_alpha=alpha;
+	  int local_beta=beta;
+	  //pthread_mutex_unlock(&main_lock);
+	  //pthread_mutex_lock (&super_lock);
+	  leave_loop=1;
+	  struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
       
-      ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, (move_sp-move_stack));
+	  ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, (move_sp-move_stack));
       //arg_ball->move_sp=move_sp;
 
-      int j=0;
-      byte* p_board=(byte*) malloc(67*sizeof(byte));
-      for (j=0;j<67; j++){
-	p_board[j]=board[j];
-      }
+	  int j=0;
+	  byte* p_board=(byte*) malloc(67*sizeof(byte));
+	  for (j=0;j<67; j++){
+	    p_board[j]=board[j];
+	  }
       //ruin_global_variables();
       pthread_mutex_lock(& nodes_visited_lock);
 (*nodes_visited)++;
@@ -3493,7 +3527,8 @@ pthread_mutex_unlock(& nodes_visited_lock);
 	
 	/*TEMP  This needs to be deep copy of board*/
 	
-	local_score = -p_child_search(depth-1, -local_beta, -local_alpha, p_board, arg_ball);
+	local_score =  p_child_search(depth-1, -local_beta, -local_alpha, p_board, arg_ball);
+	local_score*=-1;
       } else {
 	
 
