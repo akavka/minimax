@@ -100,6 +100,9 @@ static int parallel_code=0;
 #define RANDOM_COUNTDOWN_START 6
 #define GAME_LENGTH 12
 #define CILK_THRESHOLD 5
+#define WORK_STEAL_A 1
+#define WORK_STEAL_B 1
+
 static int random_countdown=RANDOM_COUNTDOWN_START;
 static int total_nodes_visited=0;
 static const char late_path[]= "/home/akavka/minimax/";
@@ -3143,7 +3146,7 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
 		    
 	      local_score = -p_qsearch(-beta, -local_alpha, p_board2, arg_ball2);
 	    } 
-	    	    else if (newdepth>=CILK_THRESHOLD){
+	    else if( (newdepth>=CILK_THRESHOLD)&& WORK_STEAL_B){
 	      local_score=-cilk_child_search(newdepth, -beta, -local_alpha, p_board, arg_ball, write_divergence);
 	      print_results=0;
 		    }
@@ -3417,7 +3420,7 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		    local_score = -p_qsearch(-beta, -local_alpha, p_board, arg_ball);
 		  } 
 		  
-		  else if (newdepth>=CILK_THRESHOLD){
+		  else if ((newdepth>=CILK_THRESHOLD)&&WORK_STEAL_A){
 		    local_score=-cilk_child_search(newdepth, -beta, -local_alpha, p_board, arg_ball, write_divergence);
 		    print_results=0;
 		    }
