@@ -3032,7 +3032,7 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
 	pthread_mutex_t nodes_visited_lock;
 
 	pthread_mutex_init(&main_lock, NULL);
-pthread_mutex_init(&nodes_visited_lock, NULL);
+	pthread_mutex_init(&nodes_visited_lock, NULL);
         incheck = arg_ball->enemy->attack[arg_ball->friend->king];
 
         /*
@@ -3054,14 +3054,14 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 
 	  int newdepth;
 	  int move;
-		int go_on=1;
-		byte* p_board2=(byte*) malloc(67*sizeof(byte));
-		int j=0;
-		int local_alpha=0;
-		int local_score;
-		//Make local copies of global variables
-		struct move* move_stack_copy;
-		ball*arg_ball2;
+	  int go_on=1;
+	  byte* p_board2=(byte*) malloc(67*sizeof(byte));
+	  int j=0;
+	  int local_alpha=0;
+	  int local_score;
+	  //Make local copies of global variables
+	  struct move* move_stack_copy;
+	  ball*arg_ball2;
 
 
 		//	(*nodes_visited)++;		
@@ -3076,12 +3076,13 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		}
 		//  pthread_mutex_unlock(&main_lock);		  
 		  if(go_on){
-		move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
+		    move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
 
-memcpy(move_stack_copy, arg_ball->copy_move_stack, 1024*sizeof(struct move));
-		arg_ball2=setup(&(arg_ball->white), &(arg_ball->black), arg_ball->friend, arg_ball->enemy, arg_ball->ply, arg_ball->caps, move_stack_copy, k-arg_ball->copy_move_stack);
-		for (j=0; j<67; j++){
-		  p_board2[j]=p_board[j];
+
+		    arg_ball2=setup(&(arg_ball->white), &(arg_ball->black), arg_ball->friend, arg_ball->enemy, arg_ball->ply, arg_ball->caps, move_stack_copy, k-arg_ball->copy_move_stack);
+		    memcpy(move_stack_copy, arg_ball->copy_move_stack, 1024*sizeof(struct move));
+		    for (j=0; j<67; j++){
+		      p_board2[j]=p_board[j];
 		}
 
 		/*TEMP used to prove that global variable isn't being touched.*/
