@@ -101,7 +101,7 @@ static int parallel_code=0;
 #define GAME_LENGTH 12
 #define CILK_THRESHOLD 5
 #define WORK_STEAL_A 1
-#define WORK_STEAL_B 1
+#define WORK_STEAL_B 0
 
 static int random_countdown=RANDOM_COUNTDOWN_START;
 static int total_nodes_visited=0;
@@ -3066,7 +3066,7 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
 	  int go_on=1;
 	  byte* p_board2=(byte*) malloc(67*sizeof(byte));
 	  int j=0;
-	  int local_alpha=0;
+	  int local_alpha=0, local_beta=0;
 	  int local_score;
 	  //Make local copies of global variables
 	  struct move* move_stack_copy;
@@ -3074,9 +3074,10 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
 
 	  
 	  //	(*nodes_visited)++;		
-	  //		pthread_mutex_lock(&main_lock);
+	  pthread_mutex_lock(&main_lock);
 	  local_alpha=alpha;
-	  //pthread_mutex_unlock(&main_lock);		  
+	  local_beta=beta;
+	  pthread_mutex_unlock(&main_lock);		  
 
 	  //	pthread_mutex_lock(&main_lock);
 	  if(fail){
@@ -3144,16 +3145,16 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
 	      
 	      /*TEMP this should be a deep copy of board*/
 		    
-	      local_score = -p_qsearch(-beta, -local_alpha, p_board2, arg_ball2);
+	      local_score = -p_qsearch(-local_beta, -local_alpha, p_board2, arg_ball2);
 	    } 
 	    else if( (newdepth>=CILK_THRESHOLD)&& WORK_STEAL_B){
-	      local_score=-cilk_child_search(newdepth, -beta, -local_alpha, p_board, arg_ball, write_divergence);
+	      local_score=-cilk_child_search(newdepth, -local_beta, -local_alpha, p_board2, arg_ball2, write_divergence);
 	      print_results=0;
 		    }
 	    
 	    else{
 	      /*TEMP this should be deep copy of p_board*/
-	      local_score = -p_child_search(newdepth, -beta, -local_alpha, p_board2, arg_ball2);
+	      local_score = -p_child_search(newdepth, -local_beta, -local_alpha, p_board2, arg_ball2);
 	    }
 
 
@@ -3350,7 +3351,7 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 	  int go_on=1;
 	  byte* p_board=(byte*) malloc(67*sizeof(byte));
 	  int j=0;
-	  int local_alpha=0;
+	  int local_alpha=0, local_beta=0;
 	  int local_score;
 		//Make local copies of global variables
 	  struct move* move_stack_copy;
@@ -3358,9 +3359,10 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 	  
 	  
 	  //	(*nodes_visited)++;		
-	  //		pthread_mutex_lock(&main_lock);
+	  pthread_mutex_lock(&main_lock);
 	  local_alpha=alpha;
-		//pthread_mutex_unlock(&main_lock);		  
+	  local_beta=beta;
+	  pthread_mutex_unlock(&main_lock);		  
 
 		  //	pthread_mutex_lock(&main_lock);
 		if(fail){
@@ -3417,16 +3419,16 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		    
 		    /*TEMP this should be a deep copy of board*/
 		    
-		    local_score = -p_qsearch(-beta, -local_alpha, p_board, arg_ball);
+		    local_score = -p_qsearch(-local_beta, -local_alpha, p_board, arg_ball);
 		  } 
 		  
 		  else if ((newdepth>=CILK_THRESHOLD)&&WORK_STEAL_A){
-		    local_score=-cilk_child_search(newdepth, -beta, -local_alpha, p_board, arg_ball, write_divergence);
+		    local_score=-cilk_child_search(newdepth, -local_beta, -local_alpha, p_board, arg_ball, write_divergence);
 		    print_results=0;
 		    }
 		  else{
 		    /*TEMP this should be deep copy of p_board*/
-		    local_score = -p_child_search(newdepth, -beta, -local_alpha, p_board, arg_ball);
+		    local_score = -p_child_search(newdepth, -local_beta, -local_alpha, p_board, arg_ball);
 		  }
 		  if (local_score < -29000) local_score++;    /* adjust for mate-in-n */
 
