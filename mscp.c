@@ -99,6 +99,7 @@ static int maxdepth = RANDOM_DEPTH;                /* Maximum search depth */
 static int parallel_code=0;
 #define RANDOM_COUNTDOWN_START 6
 #define GAME_LENGTH 12
+#define CILK_THRESHOLD 5
 static int random_countdown=RANDOM_COUNTDOWN_START;
 static int total_nodes_visited=0;
 static const char late_path[]= "/home/akavka/minimax/";
@@ -2961,7 +2962,7 @@ static int p_child_search(int depth, int alpha, int beta, byte* p_board, ball*ar
 		  
 		
 		//		  free(p_board2);
-		// free(arg_ball2->undo_sp);
+		//free(arg_ball2->undo_sp);
 		// free(move_stack_copy);
 		// free(arg_ball2);
 		  //cilk_sync;		  		  
@@ -3053,7 +3054,7 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
 	cilk_for(k=moves; k<=arg_ball->move_sp; k++){
 	  //	while (arg_ball->move_sp > moves) {
 
-
+	  int print_results=1;
 	  double begin=currentSeconds();
 	  double end;
 
@@ -3117,10 +3118,11 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
 	      /*TEMP this should be a deep copy of board*/
 	      p_unmake_move(p_board2, arg_ball2);
 	      
-	      /*TEMP eliminating frees
+	      /*TEMP eliminating frees*/
 		free(move_stack_copy);
+		free(arg_ball2->undo_sp);
 		free(arg_ball2);
-		free(p_board2 );*/
+		free(p_board2 );
 	      
 	      /*TEMP used to prove that global variable isn't being touched.*/
 	      //restore_global_variables();
@@ -3141,6 +3143,10 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
 		    
 	      local_score = -p_qsearch(-beta, -local_alpha, p_board2, arg_ball2);
 	    } 
+	    	    else if (newdepth>=CILK_THRESHOLD){
+	      local_score=-cilk_child_search(newdepth, -beta, -local_alpha, p_board, arg_ball, write_divergence);
+	      print_results=0;
+		    }
 	    
 	    else{
 	      /*TEMP this should be deep copy of p_board*/
@@ -3162,10 +3168,11 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
 	    p_unmake_move(p_board2, arg_ball2);
 	    
 	    
-	    /*TEMP eliminating frees
+	    /*TEMP eliminating frees*/
 	      free(move_stack_copy);
+	      free(arg_ball2->undo_sp);
 	      free(arg_ball2);
-	      free(p_board2);*/
+	      free(p_board2);
 	    /*}
 	      
 	      if(go_on){*/
@@ -3197,7 +3204,7 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
 	  
 	  
 	  end=currentSeconds();
-	  fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);
+	  if(print_results)fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);
 
 	} //for/cilk_for
 	arg_ball->move_sp=moves;
@@ -3331,6 +3338,8 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 	//	for(k=move_sp; k>moves; k--){
 	cilk_for(k=moves+1; k<=move_sp; k++){
 	  //	while (move_sp > moves) {
+	  
+	  int print_results=1;
 	  double begin=currentSeconds();
 	  double end;
 	  int newdepth;
@@ -3386,10 +3395,11 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		  /*TEMP this should be a deep copy of board*/
                         p_unmake_move(p_board, arg_ball);
 			
-			/*TEMP eliminating frees
+			/*TEMP eliminating frees*/
 			free(move_stack_copy);
+			free(arg_ball->undo_sp);
 			free(arg_ball);
-			free(p_board );*/
+			free(p_board );
 
 		/*TEMP used to prove that global variable isn't being touched.*/
 			//restore_global_variables();
@@ -3406,10 +3416,10 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		    
 		    local_score = -p_qsearch(-beta, -local_alpha, p_board, arg_ball);
 		  } 
-
-		  else if (newdepth>=3){
+		  
+		  else if (newdepth>=CILK_THRESHOLD){
 		    local_score=-cilk_child_search(newdepth, -beta, -local_alpha, p_board, arg_ball, write_divergence);
-
+		    print_results=0;
 		    }
 		  else{
 		    /*TEMP this should be deep copy of p_board*/
@@ -3428,10 +3438,11 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		  p_unmake_move(p_board, arg_ball);
 		  
 
-		  /*TEMP eliminating frees
+		  /*TEMP eliminating frees*/
 		  free(move_stack_copy);
+		  free(arg_ball->undo_sp);
 		  free(arg_ball);
-		  free(p_board);*/
+		  free(p_board);
 		  /*}
 		
 		    if(go_on){*/
@@ -3463,7 +3474,9 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 	
 
 		end=currentSeconds();
-fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);    
+
+		if(print_results)
+		  fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);    
 		/*		if(go_on){
 
 		  
@@ -3661,7 +3674,7 @@ pthread_mutex_init (&super_lock, NULL);
     //for(m=move_sp-1; m>=move_stack +1; m--){
       cilk_for (m=move_stack+1;m < move_sp;m++) {
       //fprintf(stderr,"move_stack was %d, m was %d and move_sp was %d\n", move_stack, m, move_sp);
-      
+	
 	double begin=currentSeconds();
 	double end;
 	int leave_loop=0;
@@ -3710,6 +3723,7 @@ pthread_mutex_unlock(& nodes_visited_lock);
 	//move_sp=arg_ball->move_sp;
 	free(move_stack_copy);
 	free(p_board );
+	free(arg_ball->undo_sp);
 	free(arg_ball);
 	//pthread_mutex_unlock (&super_lock);
 	//restore_global_variables();
@@ -3750,6 +3764,7 @@ pthread_mutex_unlock(& nodes_visited_lock);
 
       //      move_sp=arg_ball->move_sp;
       free(move_stack_copy);
+      free(arg_ball->undo_sp);
       free(arg_ball);
       free(p_board );
       //restore_global_variables();
@@ -3802,6 +3817,7 @@ pthread_mutex_unlock(& nodes_visited_lock);
       }//while proceed
   
       end=currentSeconds();
+      
       fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);    
 
        /* continue with next move */
