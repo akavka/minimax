@@ -3870,6 +3870,333 @@ pthread_mutex_unlock(& nodes_visited_lock);
   return move;
 }
 
+static int p_root_time(int maxdepth, FILE* write_time, FILE*write_first_time, FILE*write_second_time, FILE*write_count, FILE*write_first_count, FILE*write_second_count, FILE* write_divergence, float limit)
+{
+  int             depth;
+  int             score, best_score;
+  int             move = 0;
+  int             result_move;
+  int             alpha, beta;
+  unsigned long   node;
+  struct move     *m;
+  pthread_mutex_t main_lock;
+  pthread_mutex_t nodes_visited_lock;
+  pthread_mutex_t super_lock;
+  int num_moves=0;
+  double initialize,top, mid, bottom;
+  int top_nodes, mid_nodes, bottom_nodes;
+  int *nodes_visited=(int*)malloc(sizeof(int));
+  
+
+  initialize=currentSeconds();
+
+  //  fprintf(write_divergence, "blam 0");
+  pthread_mutex_init (&main_lock, NULL);
+pthread_mutex_init (&nodes_visited_lock, NULL);
+
+pthread_mutex_init (&super_lock, NULL);  
+  nodes = 0;
+  compute_piece_square_tables();
+  
+  generate_moves(0);
+  qsort(move_stack, move_sp-move_stack, sizeof(struct move), cmp_move);
+  
+  alpha = -INF;
+  beta = +INF;
+  *nodes_visited=0;
+  puts(" nodes ply score move");
+  
+  
+  
+  
+  
+  
+  for (depth = 1; (depth<=1) || (currentSeconds()-initialize<limit); depth++) {
+    int proceed=1;
+    top=currentSeconds();
+    top_nodes=*nodes_visited;
+    m = move_stack;
+    best_score = INT_MIN;
+    
+    node = nodes;
+    num_moves=0;
+
+
+    result_move=move;
+    
+    /*in parallel version the first iteration works different than subsequent iterations.*/
+    while (m < move_sp && proceed) {
+      
+      /*go into move, check if legal;*/
+      make_move(m->move);
+      compute_attacks();
+      if (friend->attack[enemy->king] != 0) { /* illegal? */
+
+	unmake_move();
+	*m = *--move_sp; /* drop this move */
+	continue;
+      }
+      
+      
+      /*			 SIMPLE No hash stack
+      //don't know what this is anyway
+      hash_stack[ply] = compute_hash();*/
+      
+      
+      /*do normal search. Or if end of depth, Q-Search*/
+      if (depth-1 > 0) {
+	
+	/*TEMP change*/
+	score = -p_vsearch(depth-1, -beta, -alpha, nodes_visited, write_divergence);
+      } else {
+	
+	score = -qsearch(-beta, -alpha);
+      }
+      unmake_move();
+      
+      
+      /*Fix window if it was too narrow.*/
+      if (score>=beta || (score<=alpha && m==move_stack)) {
+	alpha = -INF;
+	beta = +INF;
+	continue; /* re-search this move */
+      }
+      
+      /*I don't know what this is*/
+      m->prescore = ~squeeze(nodes-node);
+      node = nodes;
+
+      num_moves++;
+      /*            if((ply==147 ) && depth==1){
+	  printf("B DEBUG %5lu %3d %+1.2f ", nodes, depth, score / 100.0);
+	  print_move_san(m->move);
+	  puts("");
+	  }*/
+
+
+
+      
+      if ((score > best_score) || (score==best_score &&(m->move>move))) {
+	      //if (score > best_score) {
+	struct move tmp;
+	
+	best_score = score;
+	alpha = score-1;
+	beta = score + 2;
+	move = m->move;
+	
+	tmp = *move_stack; /* swap with top of list */
+	*move_stack = *m;
+	*m = tmp;
+      }
+      m++; /* continue with next move */
+      proceed=0;		
+    }
+    
+
+    if(depth>=maxdepth-1){
+    mid=currentSeconds();
+    mid_nodes=*nodes_visited;
+    fprintf(stderr, "Depth %d: First half time %f nodes is %d\n", depth, mid-top, mid_nodes-top_nodes);
+    fprintf(write_first_time, "%f\n", mid-top);
+    fprintf(write_first_count, "%d\n", mid_nodes-top_nodes);
+    //fprintf(write_divergence, "0 %f\n", 4*(mid-top));
+    }
+
+    parallel_code=1;
+    //for(m=move_sp-1; m>=move_stack +1; m--){
+      cilk_for (m=move_stack+1;m < move_sp;m++) {
+      //fprintf(stderr,"move_stack was %d, m was %d and move_sp was %d\n", move_stack, m, move_sp);
+	
+	double begin=currentSeconds();
+	double end;
+	int leave_loop=0;
+	int local_score;
+	/*      byte*p_board=board;*/
+	
+	while(leave_loop==0){
+
+	  pthread_mutex_lock(&main_lock);
+	  int local_alpha=alpha;
+	  int local_beta=beta;
+	  pthread_mutex_unlock(&main_lock);
+	  //pthread_mutex_lock (&super_lock);
+	  leave_loop=1;
+	  struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
+      
+	  ball*arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, (move_sp-move_stack));
+      //arg_ball->move_sp=move_sp;
+
+	  int j=0;
+	  byte* p_board=(byte*) malloc(67*sizeof(byte));
+	  for (j=0;j<67; j++){
+	    p_board[j]=board[j];
+	  }
+      //ruin_global_variables();
+      pthread_mutex_lock(& nodes_visited_lock);
+(*nodes_visited)++;
+pthread_mutex_unlock(& nodes_visited_lock);
+      /*go into move, check if legal;*/
+      
+      /*TEMP this should be a deep copy of board*/
+      p_make_move(m->move, p_board, arg_ball);
+      
+      /*TEMP this needs to be a deep copy of board.*/
+      p_compute_attacks(p_board, arg_ball);
+      if (arg_ball->friend->attack[arg_ball->enemy->king] != 0) { /* illegal? */
+	
+	/*TEMP this needs to be a deep copy of board.*/
+	p_unmake_move(p_board, arg_ball);
+
+
+	//	move_sp--;
+	//	*m = *--(arg_ball->move_sp); /* drop this move */
+	//m--;	
+
+	//move_sp=arg_ball->move_sp;
+	free(move_stack_copy);
+	free(p_board );
+	free(arg_ball->undo_sp);
+	free(arg_ball);
+	//pthread_mutex_unlock (&super_lock);
+	//restore_global_variables();
+	continue;
+      }
+
+      
+      /*			 SIMPLE No hash stack
+      //don't know what this is anyway
+      hash_stack[arg_ball->ply] = p_compute_hash(p_board, arg_ball);*/
+      
+      
+      /*do normal search. Or if end of depth, Q-Search*/
+	
+      if (depth-1 > 0) {
+	
+	/*TEMP  This needs to be deep copy of board*/
+	
+	local_score =  p_child_search(depth-1, -local_beta, -local_alpha, p_board, arg_ball);
+	local_score*=-1;
+      } else {
+	
+
+	/*TEMP  This needs to be deep copy of board*/
+	local_score = -p_qsearch(-local_beta, -local_alpha, p_board, arg_ball);
+      }
+
+
+      /*TEMP  This needs to be deep copy of board*/
+      p_unmake_move(p_board, arg_ball);
+      
+
+	pthread_mutex_lock(& nodes_visited_lock);
+
+	(*nodes_visited)+=arg_ball->nodes_visited;
+	pthread_mutex_unlock(& nodes_visited_lock);
+
+
+      //      move_sp=arg_ball->move_sp;
+      free(move_stack_copy);
+      free(arg_ball->undo_sp);
+      free(arg_ball);
+      free(p_board );
+      //restore_global_variables();
+
+      
+      /*Fix window if it was too narrow.*/
+      if (local_score>=local_beta || (local_score<=alpha && m==move_stack)) {
+	pthread_mutex_lock(& main_lock);
+	if (local_score>=beta || (local_score<=alpha && m==move_stack)) {
+	alpha = -INF;
+	beta = +INF;
+	}
+	pthread_mutex_unlock(& main_lock);
+	//	m--;
+	leave_loop=0;
+	//pthread_mutex_unlock (&super_lock);
+	continue; // re-search this move 
+      }
+      
+
+
+      /*I don't know what this is*/
+      /*m->prescore = ~squeeze(nodes-node);
+	node = nodes;*/
+
+
+      num_moves++;
+      /*            if((ply==147 ) && depth==1){
+	  printf("C DEBUG %5lu %3d %+1.2f ", nodes, depth, local_score / 100.0);
+	  print_move_san(m->move);
+	  puts("");
+	  }*/
+    
+      pthread_mutex_lock(& main_lock);
+      if ((local_score > best_score) || (local_score==best_score &&(m->move>move))) {
+	struct move tmp;
+	
+	best_score = local_score;
+	alpha = local_score-1;
+	beta = local_score + 2;
+	move = m->move;
+	
+	tmp = *move_stack; // swap with top of list 
+	*move_stack = *m;
+	*m = tmp;
+      }
+      pthread_mutex_unlock(& main_lock);
+
+      //      pthread_mutex_unlock (&super_lock);            
+      }//while proceed
+  
+      end=currentSeconds();
+      
+      fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);    
+
+       /* continue with next move */
+    }
+    parallel_code=0;
+    
+    
+    /*    if ((num_moves<=1) ||(move_sp-move_stack <= 1)) {
+      break; // just one move to play 
+      }*/
+    printf(" %3d %+1.2f ", depth, best_score / 100.0);
+    print_move_san(move);
+    puts("");
+    
+    /* sort remaining moves in descending order of subtree size */
+    //SIMPLE this relies on the hash table we don't use
+    //    qsort(move_stack+1, move_sp-move_stack-1, sizeof(*m), cmp_move);
+    
+    /*Widen window for deeper search*/
+    alpha = best_score - 33;        /* aspiration window */
+    beta = best_score + 33;
+
+
+    if(depth>=maxdepth-1){
+      bottom=currentSeconds();
+      bottom_nodes=*nodes_visited;
+      fprintf(stderr, "Depth %d: second half time %f and nodes %d\n", depth, bottom-mid, bottom_nodes-mid_nodes);
+      total_nodes_visited+=(*nodes_visited);
+      fprintf(stderr, "Nodes visited here was %d, total was %d\n", *nodes_visited,total_nodes_visited);
+      fprintf(write_second_time, "%f\n", bottom-mid);
+      fprintf(write_second_count, "%d\n", bottom_nodes-mid_nodes);
+  
+    }
+
+
+  }
+  move_sp = move_stack;
+
+  bottom=currentSeconds();
+  fprintf(stderr, "Total time was was %f\n", bottom-initialize);
+  fprintf(write_count, "%d\n", *nodes_visited);
+  fprintf(write_divergence, "fence %f\n",/*__cilkrts_get_worker_number(),*/ bottom-initialize);
+
+
+  return result_move;
+}
 
 
 /*----------------------------------------------------------------------+
