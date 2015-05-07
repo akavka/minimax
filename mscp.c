@@ -100,7 +100,7 @@ static int parallel_code=0;
 #define RANDOM_COUNTDOWN_START 6
 #define GAME_LENGTH 12
 #define CILK_THRESHOLD 5
-#define WORK_STEAL_A 1
+#define WORK_STEAL_A 0
 #define WORK_STEAL_B 0
 
 static int random_countdown=RANDOM_COUNTDOWN_START;
@@ -3688,10 +3688,10 @@ pthread_mutex_init (&super_lock, NULL);
 	
 	while(leave_loop==0){
 
-	//	pthread_mutex_lock(&main_lock);
+	  pthread_mutex_lock(&main_lock);
 	  int local_alpha=alpha;
 	  int local_beta=beta;
-	  //pthread_mutex_unlock(&main_lock);
+	  pthread_mutex_unlock(&main_lock);
 	  //pthread_mutex_lock (&super_lock);
 	  leave_loop=1;
 	  struct move* move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
