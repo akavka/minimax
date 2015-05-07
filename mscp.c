@@ -3030,9 +3030,12 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
 	int fail=0;
 	pthread_mutex_t main_lock;
 	pthread_mutex_t nodes_visited_lock;
+	pthread_mutex_t super_lock;
+
 
 	pthread_mutex_init(&main_lock, NULL);
 	pthread_mutex_init(&nodes_visited_lock, NULL);
+	pthread_mutex_init(&super_lock, NULL);
         incheck = arg_ball->enemy->attack[arg_ball->friend->king];
 
         /*
@@ -3047,8 +3050,10 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
         qsort(moves, arg_ball->move_sp - moves, sizeof(*moves), cmp_move);
 
 	//	for(k=arg_ball->move_sp; k>moves; k--){
-	for(k=moves; k<=arg_ball->move_sp; k++){
+	cilk_for(k=moves; k<=arg_ball->move_sp; k++){
 	  //	while (arg_ball->move_sp > moves) {
+
+
 	  double begin=currentSeconds();
 	  double end;
 
@@ -3063,137 +3068,149 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
 	  struct move* move_stack_copy;
 	  ball*arg_ball2;
 
+	  
+	  //	(*nodes_visited)++;		
+	  //		pthread_mutex_lock(&main_lock);
+	  local_alpha=alpha;
+	  //pthread_mutex_unlock(&main_lock);		  
 
-		//	(*nodes_visited)++;		
-		//		pthread_mutex_lock(&main_lock);
-		local_alpha=alpha;
-		//pthread_mutex_unlock(&main_lock);		  
+	  //	pthread_mutex_lock(&main_lock);
+	  if(fail){
+	    
+	    go_on=0;
+	  }
+	  //  pthread_mutex_unlock(&main_lock);		  
+	  
+	  if(go_on){
+	    //pthread_mutex_lock(&super_lock);	    	    
+	    move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
+	    
 
-		  //	pthread_mutex_lock(&main_lock);
-		if(fail){
+	    arg_ball2=setup(&(arg_ball->white), &(arg_ball->black), arg_ball->friend, arg_ball->enemy, arg_ball->ply, arg_ball->caps, move_stack_copy, k-arg_ball->copy_move_stack);
+	    memcpy(move_stack_copy, arg_ball->copy_move_stack, 1024*sizeof(struct move));
+	    
 
-		  go_on=0;
-		}
-		//  pthread_mutex_unlock(&main_lock);		  
-		  if(go_on){
-		    move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
+	    for (j=0; j<67; j++){
+	      p_board2[j]=p_board[j];
+	    }
+	    
+	    /*TEMP used to prove that global variable isn't being touched.*/
+	    //		ruin_global_variables();
+	    
+	    
+	    
+	    
+	    
+	    //		move_sp--;
+	    (arg_ball2->move_sp)--;
+	    move = arg_ball2->move_sp->move;
+	    
+	    /*TEMP this should be deep copy of board*/
+	    
+	    p_make_move(move, p_board2, arg_ball2);
+	    
+	    /*TEMP this needs to be a deep copy of board*/
+	    p_compute_attacks(p_board2, arg_ball2);
+	    if (arg_ball2->friend->attack[arg_ball2->enemy->king]) {
+	      
+	      
+	      /*TEMP this should be a deep copy of board*/
+	      p_unmake_move(p_board2, arg_ball2);
+	      
+	      /*TEMP eliminating frees
+		free(move_stack_copy);
+		free(arg_ball2);
+		free(p_board2 );*/
+	      
+	      /*TEMP used to prove that global variable isn't being touched.*/
+	      //restore_global_variables();
+	      
 
-
-		    arg_ball2=setup(&(arg_ball->white), &(arg_ball->black), arg_ball->friend, arg_ball->enemy, arg_ball->ply, arg_ball->caps, move_stack_copy, k-arg_ball->copy_move_stack);
-		    memcpy(move_stack_copy, arg_ball->copy_move_stack, 1024*sizeof(struct move));
-		    for (j=0; j<67; j++){
-		      p_board2[j]=p_board[j];
-		}
-
-		/*TEMP used to prove that global variable isn't being touched.*/
-		//		ruin_global_variables();
-		
-
-		
-
-		
-		//		move_sp--;
-                (arg_ball2->move_sp)--;
-                move = arg_ball2->move_sp->move;
-
-		/*TEMP this should be deep copy of board*/
-
-                p_make_move(move, p_board, arg_ball2);
-
-		/*TEMP this needs to be a deep copy of board*/
-                p_compute_attacks(p_board, arg_ball2);
-                if (arg_ball2->friend->attack[arg_ball2->enemy->king]) {
-
-
-		  /*TEMP this should be a deep copy of board*/
-                        p_unmake_move(p_board, arg_ball2);
-			
-			/*TEMP eliminating frees
-			free(move_stack_copy);
-			free(arg_ball);
-			free(p_board );*/
-
-		/*TEMP used to prove that global variable isn't being touched.*/
-			//restore_global_variables();
-			
-			go_on=0;
-                }
-		  }
-
-		if(go_on){
-		  newdepth = incheck ? depth : depth-1;
-		  if (newdepth <= 0) {
+	      //	      pthread_mutex_unlock(&super_lock);
+	      go_on=0;
+	    }
+	  }
+	  
+	  if(go_on){
+	    //	    	    pthread_mutex_unlock(&super_lock);
+	    //pthread_mutex_lock(&super_lock);
+	    newdepth = incheck ? depth : depth-1;
+	    if (newdepth <= 0) {
+	      
+	      /*TEMP this should be a deep copy of board*/
 		    
-		    /*TEMP this should be a deep copy of board*/
-		    
-		    local_score = -p_qsearch(-beta, -local_alpha, p_board, arg_ball2);
-		  } 
-
-		  else{
-		    /*TEMP this should be deep copy of p_board*/
-		    local_score = -p_child_search(newdepth, -beta, -local_alpha, p_board, arg_ball2);
-		  }
-		  if (local_score < -29000) local_score++;    /* adjust for mate-in-n */
+	      local_score = -p_qsearch(-beta, -local_alpha, p_board2, arg_ball2);
+	    } 
+	    
+	    else{
+	      /*TEMP this should be deep copy of p_board*/
+	      local_score = -p_child_search(newdepth, -beta, -local_alpha, p_board2, arg_ball2);
+	    }
 
 
-		  pthread_mutex_lock(&nodes_visited_lock);
-		  (arg_ball->nodes_visited)+=arg_ball2->nodes_visited;
-		  
-		  pthread_mutex_unlock(&nodes_visited_lock);
-		  
-		  
-		  /*TEMP this should be a deep copy of board*/
-		  p_unmake_move(p_board, arg_ball2);
-		  
 
-		  /*TEMP eliminating frees
-		  free(move_stack_copy);
-		  free(arg_ball2);
-		  free(p_board);*/
-		  /*}
-		
-		    if(go_on){*/
+	    if (local_score < -29000) local_score++;    /* adjust for mate-in-n */
+	    
+	    
+	    pthread_mutex_lock(&nodes_visited_lock);
+	    (arg_ball->nodes_visited)+=arg_ball2->nodes_visited;
+	    
+	    pthread_mutex_unlock(&nodes_visited_lock);
+	    
+	    
+	    /*TEMP this should be a deep copy of board*/
+	    p_unmake_move(p_board2, arg_ball2);
+	    
+	    
+	    /*TEMP eliminating frees
+	      free(move_stack_copy);
+	      free(arg_ball2);
+	      free(p_board2);*/
+	    /*}
+	      
+	      if(go_on){*/
+	    
+	    
+	    if ((local_score>alpha) || (local_score>best_score)){
+	      pthread_mutex_lock(&main_lock);
+	      if (local_score>alpha){
+		usleep(1);
+		best_score = local_score;
+		best_move = move;
+		alpha = local_score;
+	      }
+	      
+	      else if (local_score>best_score){
+		usleep(1);
+		best_score = local_score;
+		best_move = move;   
+	      }
+	      pthread_mutex_unlock(&main_lock);
+	    }
+	    
+	    if (local_score>beta){
+	      fail=1;
+	      
+	    }
+	    //	  pthread_mutex_unlock(&super_lock);   	    
+	  }//end go_on
+	  
+	  
+	  end=currentSeconds();
+	  fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);
 
-		  
-		  if ((local_score>alpha) || (local_score>best_score)){
-		    pthread_mutex_lock(&main_lock);
-		    if (local_score>alpha){
-		      usleep(1);
-		      best_score = local_score;
-		      best_move = move;
-		      alpha = local_score;
-		    }
-		    
-		    else if (local_score>best_score){
-		      usleep(1);
-		      best_score = local_score;
-		      best_move = move;   
-		    }
-		    	pthread_mutex_unlock(&main_lock);
-		  }
-
-		  if (local_score>beta){
-		      fail=1;
-		    
-		  }
-
-		}//end go_on
-	
-
-		end=currentSeconds();
-		fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);   
-	} 
+	} //for/cilk_for
 	arg_ball->move_sp=moves;
-
-
+	
+	
         if (best_score == -INF) { /* deal with mate and stalemate */
-                if (incheck) {
-                        best_score = -30000;
-                } else {
-                        best_score = 0;
-                }
+	  if (incheck) {
+	    best_score = -30000;
+	  } else {
+	    best_score = 0;
+	  }
         }
-
+	
         return best_score;
 }
 
@@ -3208,6 +3225,7 @@ static int p_vsearch(int depth, int alpha, int beta, int* nodes_visited, FILE*wr
 	struct move *k;
 	int fail=0;
 	pthread_mutex_t main_lock;
+	
 	pthread_mutex_t nodes_visited_lock;
 
         /*SIMPLE we cut these variables when we don't use the hash table
@@ -3249,6 +3267,7 @@ static int p_vsearch(int depth, int alpha, int beta, int* nodes_visited, FILE*wr
 
 
 	pthread_mutex_init(&main_lock, NULL);
+	
 pthread_mutex_init(&nodes_visited_lock, NULL);
         incheck = enemy->attack[friend->king];
 
@@ -3314,22 +3333,21 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 	  //	while (move_sp > moves) {
 	  double begin=currentSeconds();
 	  double end;
-
 	  int newdepth;
 	  int move;
-		int go_on=1;
-		byte* p_board=(byte*) malloc(67*sizeof(byte));
-		int j=0;
-		int local_alpha=0;
-		int local_score;
+	  int go_on=1;
+	  byte* p_board=(byte*) malloc(67*sizeof(byte));
+	  int j=0;
+	  int local_alpha=0;
+	  int local_score;
 		//Make local copies of global variables
-		struct move* move_stack_copy;
-		ball*arg_ball;
-
-
-		//	(*nodes_visited)++;		
-		//		pthread_mutex_lock(&main_lock);
-		local_alpha=alpha;
+	  struct move* move_stack_copy;
+	  ball*arg_ball;
+	  
+	  
+	  //	(*nodes_visited)++;		
+	  //		pthread_mutex_lock(&main_lock);
+	  local_alpha=alpha;
 		//pthread_mutex_unlock(&main_lock);		  
 
 		  //	pthread_mutex_lock(&main_lock);
