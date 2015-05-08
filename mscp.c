@@ -102,7 +102,7 @@ static int parallel_code=0;
 #define CILK_THRESHOLD 5
 #define WORK_STEAL_A 0
 #define WORK_STEAL_B 0
-
+#define TIME_LIMIT 1.0
 static int global_depth;
 static int random_countdown=RANDOM_COUNTDOWN_START;
 static int total_nodes_visited=0;
@@ -1937,6 +1937,142 @@ static int root_search(int maxdepth, FILE* write_time,FILE*write_first_time, FIL
         move_sp = move_stack;
 	fprintf(write_count, "%d\n", nodes);
         return move;
+}
+
+static int root_time(int maxdepth, FILE* write_time,FILE*write_first_time, FILE*write_second_time, FILE*write_count, FILE*write_first_count, FILE*write_second_count)
+{
+        int             depth;
+        int             score, best_score;
+        int             move = 0, return_move=0;
+        int             alpha, beta;
+        unsigned long   node;
+        struct move     *m;
+	int do_mid=1;
+	double initialize,top, mid, bottom;
+	int top_nodes, mid_nodes, bottom_nodes;
+	initialize=currentSeconds();
+        nodes = 0;
+        compute_piece_square_tables();
+
+        generate_moves(0);
+        qsort(move_stack, move_sp-move_stack, sizeof(struct move), cmp_move);
+
+        alpha = -INF;
+        beta = +INF;
+        puts(" nodes ply score move");
+
+        for (depth = 1; (currentSeconds()-initialize<TIME_LIMIT)|| (depth<=1); depth++) {
+	  global_depth=depth-1;
+	  return_move=move;
+	  do_mid=1;
+	  top=currentSeconds();
+	  top_nodes=nodes;
+                m = move_stack;
+                best_score = INT_MIN;
+
+                node = nodes;
+                while (m < move_sp) {
+
+		  /*go into move, check if legal;*/
+                        make_move(m->move);
+                        compute_attacks();
+                        if (friend->attack[enemy->king] != 0) { /* illegal? */
+                                unmake_move();
+                                *m = *--move_sp; /* drop this move */
+                                continue;
+                        }
+
+
+			/*			 SIMPLE No hash stack
+			//don't know what this is anyway
+			hash_stack[ply] = compute_hash();*/
+			
+
+			/*do normal search. Or if end of depth, Q-Search*/
+                        if (depth-1 > 0) {
+                                score = -search(depth-1, -beta, -alpha);
+                        } else {
+                                score = -qsearch(-beta, -alpha);
+                        }
+                        unmake_move();
+
+
+			/*Fix window if it was too narrow.*/
+                        if (score>=beta || (score<=alpha && m==move_stack)) {
+                                alpha = -INF;
+                                beta = +INF;
+                                continue; /* re-search this move */
+                        }
+			
+			/*I don't know what this is*/
+                        m->prescore = ~squeeze(nodes-node);
+                        node = nodes;
+
+			/*		if(ply==147 && depth==1){
+			printf("A DEBUG %5lu %3d %+1.2f ", nodes, depth, score / 100.0);
+			print_move_san(m->move);
+			puts("");
+			}*/
+
+
+                        if ((score > best_score) || ((score==best_score)&&(m->move>move))) {
+			//                        if (score > best_score) {
+                                struct move tmp;
+
+                                best_score = score;
+                                alpha = score-1;
+                                beta = score + 2;
+                                move = m->move;
+
+                                tmp = *move_stack; /* swap with top of list */
+                                *move_stack = *m;
+                                *m = tmp;
+                        }
+                        m++; /* continue with next move */
+			if((do_mid>0)&&(depth>=maxdepth-1)){
+			  mid=currentSeconds();
+			  mid_nodes=nodes;
+			  fprintf(stderr, "Depth %d: First half time %f nodes is %d\n", depth, mid-top, mid_nodes-top_nodes);
+			  fprintf(write_first_time, "%f\n", mid-top);
+			  fprintf(write_first_count, "%d\n", mid_nodes-top_nodes);
+			  do_mid--;
+			}
+  
+
+
+ 
+                }
+
+		//SIMPLE This code doesn't work in the parallel section.
+		/*if (move_sp-move_stack <= 1) {
+                        break; //just one move to play 
+			}*/
+	total_nodes_visited+=nodes;
+	fprintf(stderr, "Serial nodes visited was %d, total so far is %d\n", nodes, total_nodes_visited);
+                printf(" %3d %+1.2f ", depth, best_score / 100.0);
+                print_move_san(move);
+                puts("");
+
+                /* sort remaining moves in descending order of subtree size */
+                //SIMPLE I think this relies on the hash table anyway.
+		//qsort(move_stack+1, move_sp-move_stack-1, sizeof(*m), cmp_move);
+
+		/*Widen window for deeper search*/
+                alpha = best_score - 33;        /* aspiration window */
+                beta = best_score + 33;
+
+		if(depth>=maxdepth-1){
+		  bottom=currentSeconds();
+		  bottom_nodes=nodes;
+		  fprintf(stderr, "Depth %d: second half time %f and nodes %d\n", depth, bottom-mid, bottom_nodes-mid_nodes);
+		  fprintf(write_second_time, "%f\n", bottom-mid);
+		  fprintf(write_second_count, "%d\n", bottom_nodes-mid_nodes);
+		}
+		
+        }
+        move_sp = move_stack;
+	fprintf(write_count, "%d\n", nodes);
+        return return_move;
 }
 
 /*----------------------------------------------------------------------+
@@ -3871,7 +4007,7 @@ pthread_mutex_unlock(& nodes_visited_lock);
   return move;
 }
 
-static int p_root_time(int maxdepth, FILE* write_time, FILE*write_first_time, FILE*write_second_time, FILE*write_count, FILE*write_first_count, FILE*write_second_count, FILE* write_divergence, float limit)
+static int p_root_time(int maxdepth, FILE* write_time, FILE*write_first_time, FILE*write_second_time, FILE*write_count, FILE*write_first_count, FILE*write_second_count, FILE* write_divergence)
 {
   int             depth;
   int             score, best_score;
@@ -3912,7 +4048,7 @@ pthread_mutex_init (&super_lock, NULL);
   
   
   
-  for (depth = 1; (depth<=1) || (currentSeconds()-initialize<limit); depth++) {
+  for (depth = 1; (depth<=1) || (currentSeconds()-initialize<TIME_LIMIT); depth++) {
     int proceed=1;
     global_depth=depth-1;
     top=currentSeconds();
@@ -4343,12 +4479,20 @@ sprintf(filename, "%s%sdivergence2.dat", argv[5],argv[6]);
 		    memset(history, 0, sizeof(history));
 		    
 		    if (argc>2 && atoi(argv[2])==1 && random_countdown<=0){
-		      move=p_root_time(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count, write_divergence,1.0);
+		      move=p_root_time(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count, write_divergence);
+
+		    }
+		    else if (random_countdown<=0){
+		      //		      move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
+		      move = root_time(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
 		      fprintf(write_real,"%d\n", global_depth);
 		    }
+
 		    else{
 		      move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
+		      fprintf(write_real,"%d\n", global_depth);
 		    }
+
 		    fprintf(stderr,"Did move %d\n", ply);
 		    random_countdown-=1;
 		    if (random_countdown<= 0){
