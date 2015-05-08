@@ -127,7 +127,12 @@ def processAFile(index,cores, utilization, speedup, workEfficiency, searchOverhe
         if (words[0]=="Overall" and words[1] =="speedup"):
             speedup[core].append(float(words[3]))
         
+        if (words[1]=="depth" and words[2] =="W"):
+            depthW[core].append(float(words[4]))
         
+        if (words[1]=="depth" and words[2] =="B"):
+            depthB[core].append(float(words[4]))
+
         #if speedup
 
 
@@ -144,9 +149,11 @@ def main():
     workEfficiency={}
     searchOverhead={}
     loss={}
+    depthW={}
+    depthB={}
     
     for i in range(lowerRange,upperRange+1):
-        processAFile(i,cores,utilization, speedup, workEfficiency, searchOverhead, loss)
+        processAFile(i,cores,utilization, speedup, workEfficiency, searchOverhead, loss, depthW, depthB)
     
 
 
