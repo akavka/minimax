@@ -103,6 +103,7 @@ static int parallel_code=0;
 #define WORK_STEAL_A 0
 #define WORK_STEAL_B 0
 
+static int global_depth;
 static int random_countdown=RANDOM_COUNTDOWN_START;
 static int total_nodes_visited=0;
 static const char late_path[]= "/home/akavka/minimax/";
@@ -3913,6 +3914,7 @@ pthread_mutex_init (&super_lock, NULL);
   
   for (depth = 1; (depth<=1) || (currentSeconds()-initialize<limit); depth++) {
     int proceed=1;
+    global_depth=depth-1;
     top=currentSeconds();
     top_nodes=*nodes_visited;
     m = move_stack;
@@ -4228,7 +4230,7 @@ int main(int argc, char *argv[])
         int move;
 	clock_t start, end;
 	double start_c, end_c;
-	FILE*write_time, *write_first_time, *write_second_time, *write_first_count, *write_second_count, *write_count, *write_divergence;
+	FILE*write_time, *write_first_time, *write_second_time, *write_first_count, *write_second_count, *write_count, *write_divergence, *write_real;
 
 
 	if (argc>2 && atoi(argv[2])==1){
@@ -4246,6 +4248,9 @@ sprintf(filename, "%s%scount_second2.dat", argv[5],argv[6]);
 	  write_second_count=fopen(filename, "w");
 sprintf(filename, "%s%sdivergence2.dat", argv[5],argv[6]);
 	  write_divergence=fopen(filename, "w");
+	  sprintf(filename, "%s%sreal2.dat", argv[5],argv[6]);
+	  write_real=fopen(filename, "w");
+
 	}
 	else{
 	  sprintf(filename, "%s%stime1.dat", argv[5],argv[6]);
@@ -4260,6 +4265,9 @@ sprintf(filename, "%s%sdivergence2.dat", argv[5],argv[6]);
 	  write_first_count=fopen(filename, "w");
 	  sprintf(filename, "%s%scount_second1.dat", argv[5],argv[6]);
 	  write_second_count=fopen(filename, "w");
+	  sprintf(filename, "%s%sreal1.dat", argv[5],argv[6]);
+	  write_real=fopen(filename, "w");
+
 	}
 	fprintf(stderr, "Started.\n");
 
@@ -4335,7 +4343,8 @@ sprintf(filename, "%s%sdivergence2.dat", argv[5],argv[6]);
 		    memset(history, 0, sizeof(history));
 		    
 		    if (argc>2 && atoi(argv[2])==1 && random_countdown<=0){
-		      move=p_root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count, write_divergence);
+		      move=p_root_time(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count, write_divergence,1.0);
+		      fprintf(write_real,"%d\n", global_depth);
 		    }
 		    else{
 		      move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
@@ -4384,6 +4393,7 @@ fclose(write_second_time);
 fclose(write_count);
 fclose(write_first_count);
 fclose(write_second_count);
+fclose(write_real);
  if(atoi(argv[2])==1)
    fclose(write_divergence);
         return 0;
