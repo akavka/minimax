@@ -4497,10 +4497,10 @@ int main(int argc, char *argv[])
 		      fprintf(write_real_white,"%d\n", global_depth);
 		      }
 
-		    //else{
-		      move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
+		    else{
+		    		      move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
 
-		      //   		    }
+		         		    }
 
 		    fprintf(stderr,"Did move %d\n", ply);
 		    random_countdown-=1;
