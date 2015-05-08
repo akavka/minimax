@@ -110,9 +110,11 @@ def main():
     print("Comparing "+sys.argv[1]+ " and " + sys.argv[2] + ":\n")
     print(str(compareGames(sys.argv[1], sys.argv[2])))
 
-    """
+
     totalTime1=analyzeOutput(latepath+"time1.dat")
     totalTime2=analyzeOutput(latepath+"time2.dat")
+
+    """
     firstTime1=analyzeTime(latepath+"time_first1.dat")
     firstTime2=analyzeTime(latepath+"time_first2.dat")
     secondTime1=analyzeTime(latepath+"time_second1.dat")

@@ -94,7 +94,7 @@ def analyzeDivergence(filename, numCoresString):
     print("Total utilization was " + str(usefulSum/totalSum))
 
 
-def processAFile(index,cores, utilization, speedup, workEfficiency, searchOverhead, loss):
+def processAFile(index,cores, utilization, speedup, workEfficiency, searchOverhead, loss, depthW, depthB):
     filename="latedays.qsub.o"+str(index)
     infile=open(filename, "r")
     lines= infile.readlines()
@@ -108,6 +108,8 @@ def processAFile(index,cores, utilization, speedup, workEfficiency, searchOverhe
         workEfficiency[core]=[]
         searchOverhead[core]=[]
         loss[core]=[]
+        depthW[core]=[]
+        depthB[core]=[]
     for line in lines:
         words=line.split()
         if len(words)<2:
@@ -128,10 +130,12 @@ def processAFile(index,cores, utilization, speedup, workEfficiency, searchOverhe
             speedup[core].append(float(words[3]))
         
         if (words[1]=="depth" and words[2] =="W"):
-            depthW[core].append(float(words[4]))
+            if float(words[4])<10:
+                depthW[core].append(float(words[4]))
         
         if (words[1]=="depth" and words[2] =="B"):
-            depthB[core].append(float(words[4]))
+            if float(words[4])<10:
+                depthB[core].append(float(words[4]))
 
         #if speedup
 
@@ -161,13 +165,18 @@ def main():
     
     print ("Core\tSpeedup\tUtilization\tEffiencySpeedup\tSearchOverhead\tLoss")
     for core in cores:
+        meanDepthW=str(sum(depthW[core])/len(depthW[core]))
+        meanDepthB=str(sum(depthB[core])/len(depthB[core]))
+        """
         meanSpeed=str(sum(speedup[core])/len(speedup[core]))
         meanUtil=str(sum(utilization[core])/len(speedup[core]))
         meanEff=str(sum(workEfficiency[core])/len(workEfficiency[core]))
         meanSearch=str(sum(searchOverhead[core])/len(searchOverhead[core]))
         meanLoss=str(sum(loss[core])/len(loss[core]))
         print(str(core)+"\t"+meanSpeed+"\t"+ meanUtil+ "\t" + meanEff+"\t"+meanSearch+"\t"+meanLoss)
-
+        """
+        print(str(core)+"\t"+meanDepthW+"\t"+meanDepthB)
+        
 
 
 if __name__=="__main__":
