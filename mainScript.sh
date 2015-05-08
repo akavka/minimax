@@ -1,7 +1,7 @@
 #!/bin/bash
 source /afs/cs/academic/class/15210-f14/cilk/gccvars_bash.sh
 
-latepath=/afs/andrew.cmu.edu/usr21/akavka/private/minimax/
+latepath=/home/akavka/minimax/
 echo Arguments were $1 $2 $3 $4 $5
 if [ $# -ge 2 ]
   then

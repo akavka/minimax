@@ -94,7 +94,7 @@ def analyzeDivergence(filename, numCoresString):
     print("Total utilization was " + str(usefulSum/totalSum))
 
 
-def processAFile(index,cores, utilization, speedup, workEfficiency, searchOverhead, loss, depthW, depthB):
+def processAFile(index,cores, utilization, speedup, workEfficiency, searchOverhead, loss, depthW, depthB, wins, draws, losses):
     filename="latedays.qsub.o"+str(index)
     infile=open(filename, "r")
     lines= infile.readlines()
@@ -110,6 +110,10 @@ def processAFile(index,cores, utilization, speedup, workEfficiency, searchOverhe
         loss[core]=[]
         depthW[core]=[]
         depthB[core]=[]
+        wins[core]=0
+        draws[core]=0
+        losses[core]=0
+        
     for line in lines:
         words=line.split()
         if len(words)<2:
@@ -136,7 +140,13 @@ def processAFile(index,cores, utilization, speedup, workEfficiency, searchOverhe
         if (words[1]=="depth" and words[2] =="B"):
             if float(words[4])<10:
                 depthB[core].append(float(words[4]))
-
+        if (words[0]=="Result" and words[1]=="win"):
+                wins[core]+=1
+        if (words[0]=="Result" and words[1]=="draw"):
+                draws[core]+=1
+        if (words[0]=="Result" and words[1]=="loss"):
+                losses[core]+=1
+        
         #if speedup
 
 
@@ -155,9 +165,12 @@ def main():
     loss={}
     depthW={}
     depthB={}
+    wins={}
+    draws={}
+    losses={}
     
     for i in range(lowerRange,upperRange+1):
-        processAFile(i,cores,utilization, speedup, workEfficiency, searchOverhead, loss, depthW, depthB)
+        processAFile(i,cores,utilization, speedup, workEfficiency, searchOverhead, loss, depthW, depthB, wins, draws, losses)
     
 
 
@@ -175,7 +188,7 @@ def main():
         meanLoss=str(sum(loss[core])/len(loss[core]))
         print(str(core)+"\t"+meanSpeed+"\t"+ meanUtil+ "\t" + meanEff+"\t"+meanSearch+"\t"+meanLoss)
         """
-        print(str(core)+"\t"+meanDepthW+"\t"+meanDepthB)
+        print(str(core)+"\t"+meanDepthW+"\t"+meanDepthB + "\t" + str(wins[core]) + "\t"+ str(draws[core]) + "\t" + str(losses[core]))
         
 
 

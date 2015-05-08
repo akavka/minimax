@@ -97,12 +97,12 @@ static unsigned long hash_stack[1024]; /* History of hashes, for repetition */
 #define FINAL_DEPTH 7
 static int maxdepth = RANDOM_DEPTH;                /* Maximum search depth */
 static int parallel_code=0;
-#define RANDOM_COUNTDOWN_START 0
+#define RANDOM_COUNTDOWN_START 4
 #define GAME_LENGTH 12
 #define CILK_THRESHOLD 5
 #define WORK_STEAL_A 0
 #define WORK_STEAL_B 0
-#define TIME_LIMIT 0.1
+#define TIME_LIMIT 1
 static int global_depth;
 static int random_countdown=RANDOM_COUNTDOWN_START;
 static int total_nodes_visited=0;
