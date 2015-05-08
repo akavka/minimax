@@ -4480,7 +4480,8 @@ sprintf(filename, "%s%sdivergence2.dat", argv[5],argv[6]);
 		    
 		    if (argc>2 && atoi(argv[2])==1 && random_countdown<=0){
 		      move=p_root_time(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count, write_divergence);
-
+		      fprintf(write_real,"%d\n", global_depth);
+		      
 		    }
 		    else if (random_countdown<=0){
 		      //		      move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
@@ -4488,15 +4489,15 @@ sprintf(filename, "%s%sdivergence2.dat", argv[5],argv[6]);
 		      fprintf(write_real,"%d\n", global_depth);
 		    }
 
-		    else{
+		    		    else{
 		      move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
-		      fprintf(write_real,"%d\n", global_depth);
-		    }
+
+		      		    }
 
 		    fprintf(stderr,"Did move %d\n", ply);
 		    random_countdown-=1;
 		    if (random_countdown<= 0){
-		      maxdepth=atoi(argv[3]);
+		      // maxdepth=atoi(argv[3]);
 		    }//if
 		    
 		  }

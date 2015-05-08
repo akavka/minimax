@@ -90,6 +90,21 @@ def analyzeDivergence(filename, numCoresString):
             partialUsefulSum+=float(words[1])
             usefulSum+=float(words[1])
     print("Total utilization was " + str(usefulSum/totalSum))
+
+def analyzeDepth(filename, side):
+    inFile=open(filename, "r");
+    lines=inFile.readlines();
+    mySum=0
+    numTurns=0
+    for line in lines:
+        mySum+=int(line)
+        numTurns+=1
+    if numTurns==0:
+        numTurns=1
+    print("Average depth "+ side+" was " + str(float(mySum)/float(numTurns)))
+
+
+
 def main():
     latepath=sys.argv[4]+sys.argv[5]
     print("Comparing "+sys.argv[1]+ " and " + sys.argv[2] + ":\n")
@@ -106,6 +121,9 @@ def main():
     firstCount2=analyzeCount(latepath+"count_first2.dat")
     secondCount1=analyzeCount(latepath+"count_second1.dat")
     secondCount2=analyzeCount(latepath+"count_second2.dat")
+    analyzeDepth(latepath+"real1.dat", "W")
+    analyzeDepth(latepath+"real2.dat", "B")
+
     analyzeDivergence(latepath+"divergence2.dat", sys.argv[3])
 
     print("Overall speedup was " + str(totalTime1/totalTime2))
