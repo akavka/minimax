@@ -109,6 +109,8 @@ def main():
     latepath=sys.argv[4]+sys.argv[5]
     print("Comparing "+sys.argv[1]+ " and " + sys.argv[2] + ":\n")
     print(str(compareGames(sys.argv[1], sys.argv[2])))
+
+    """
     totalTime1=analyzeOutput(latepath+"time1.dat")
     totalTime2=analyzeOutput(latepath+"time2.dat")
     firstTime1=analyzeTime(latepath+"time_first1.dat")
@@ -121,15 +123,16 @@ def main():
     firstCount2=analyzeCount(latepath+"count_first2.dat")
     secondCount1=analyzeCount(latepath+"count_second1.dat")
     secondCount2=analyzeCount(latepath+"count_second2.dat")
+    """
     analyzeDepth(latepath+"real1.dat", "W")
     analyzeDepth(latepath+"real2.dat", "B")
 
-    analyzeDivergence(latepath+"divergence2.dat", sys.argv[3])
-
+#    analyzeDivergence(latepath+"divergence2.dat", sys.argv[3])
+    """
     print("Overall speedup was " + str(totalTime1/totalTime2))
     print("Overall efficiency speedup was " + str((totalCount2/totalTime2)/(totalCount1/totalTime1)))
     print("Work ratio was " + str(float(totalCount1)/totalCount2))
-    
+    """
     """
     print("First Branch efficiency speedup was " + str((firstCount2/firstTime2)/(firstCount1/firstTime1)))
     print("Second Branch efficiency speedup was " + str((secondCount2/secondTime2)/(secondCount1/secondTime1)))

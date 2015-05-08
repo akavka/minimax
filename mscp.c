@@ -102,7 +102,7 @@ static int parallel_code=0;
 #define CILK_THRESHOLD 5
 #define WORK_STEAL_A 0
 #define WORK_STEAL_B 0
-#define TIME_LIMIT 1.0
+#define TIME_LIMIT 0.5
 static int global_depth;
 static int random_countdown=RANDOM_COUNTDOWN_START;
 static int total_nodes_visited=0;
@@ -2032,9 +2032,9 @@ static int root_time(int maxdepth, FILE* write_time,FILE*write_first_time, FILE*
 			if((do_mid>0)&&(depth>=maxdepth-1)){
 			  mid=currentSeconds();
 			  mid_nodes=nodes;
-			  fprintf(stderr, "Depth %d: First half time %f nodes is %d\n", depth, mid-top, mid_nodes-top_nodes);
+			  /*fprintf(stderr, "Depth %d: First half time %f nodes is %d\n", depth, mid-top, mid_nodes-top_nodes);
 			  fprintf(write_first_time, "%f\n", mid-top);
-			  fprintf(write_first_count, "%d\n", mid_nodes-top_nodes);
+			  fprintf(write_first_count, "%d\n", mid_nodes-top_nodes);*/
 			  do_mid--;
 			}
   
@@ -2048,10 +2048,10 @@ static int root_time(int maxdepth, FILE* write_time,FILE*write_first_time, FILE*
                         break; //just one move to play 
 			}*/
 	total_nodes_visited+=nodes;
-	fprintf(stderr, "Serial nodes visited was %d, total so far is %d\n", nodes, total_nodes_visited);
+	/*fprintf(stderr, "Serial nodes visited was %d, total so far is %d\n", nodes, total_nodes_visited);
                 printf(" %3d %+1.2f ", depth, best_score / 100.0);
                 print_move_san(move);
-                puts("");
+                puts("");*/
 
                 /* sort remaining moves in descending order of subtree size */
                 //SIMPLE I think this relies on the hash table anyway.
@@ -2064,9 +2064,9 @@ static int root_time(int maxdepth, FILE* write_time,FILE*write_first_time, FILE*
 		if(depth>=maxdepth-1){
 		  bottom=currentSeconds();
 		  bottom_nodes=nodes;
-		  fprintf(stderr, "Depth %d: second half time %f and nodes %d\n", depth, bottom-mid, bottom_nodes-mid_nodes);
+		  /*fprintf(stderr, "Depth %d: second half time %f and nodes %d\n", depth, bottom-mid, bottom_nodes-mid_nodes);
 		  fprintf(write_second_time, "%f\n", bottom-mid);
-		  fprintf(write_second_count, "%d\n", bottom_nodes-mid_nodes);
+		  fprintf(write_second_count, "%d\n", bottom_nodes-mid_nodes);*/
 		}
 		
         }
@@ -3960,7 +3960,7 @@ pthread_mutex_unlock(& nodes_visited_lock);
   
       end=currentSeconds();
       
-      fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);    
+            fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);    
 
        /* continue with next move */
     }
@@ -3970,10 +3970,13 @@ pthread_mutex_unlock(& nodes_visited_lock);
     /*    if ((num_moves<=1) ||(move_sp-move_stack <= 1)) {
       break; // just one move to play 
       }*/
-    printf(" %3d %+1.2f ", depth, best_score / 100.0);
+        printf(" %3d %+1.2f ", depth, best_score / 100.0);
     print_move_san(move);
     puts("");
     
+
+
+
     /* sort remaining moves in descending order of subtree size */
     //SIMPLE this relies on the hash table we don't use
     //    qsort(move_stack+1, move_sp-move_stack-1, sizeof(*m), cmp_move);
@@ -4135,9 +4138,9 @@ pthread_mutex_init (&super_lock, NULL);
     if(depth>=maxdepth-1){
     mid=currentSeconds();
     mid_nodes=*nodes_visited;
-    fprintf(stderr, "Depth %d: First half time %f nodes is %d\n", depth, mid-top, mid_nodes-top_nodes);
+    /*fprintf(stderr, "Depth %d: First half time %f nodes is %d\n", depth, mid-top, mid_nodes-top_nodes);
     fprintf(write_first_time, "%f\n", mid-top);
-    fprintf(write_first_count, "%d\n", mid_nodes-top_nodes);
+    fprintf(write_first_count, "%d\n", mid_nodes-top_nodes);*/
     //fprintf(write_divergence, "0 %f\n", 4*(mid-top));
     }
 
@@ -4289,7 +4292,7 @@ pthread_mutex_unlock(& nodes_visited_lock);
   
       end=currentSeconds();
       
-      fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);    
+      /*      fprintf(write_divergence, "%d %f\n",__cilkrts_get_worker_number(), end-begin);    */
 
        /* continue with next move */
     }
@@ -4299,9 +4302,9 @@ pthread_mutex_unlock(& nodes_visited_lock);
     /*    if ((num_moves<=1) ||(move_sp-move_stack <= 1)) {
       break; // just one move to play 
       }*/
-    printf(" %3d %+1.2f ", depth, best_score / 100.0);
+    /*printf(" %3d %+1.2f ", depth, best_score / 100.0);
     print_move_san(move);
-    puts("");
+    puts("");*/
     
     /* sort remaining moves in descending order of subtree size */
     //SIMPLE this relies on the hash table we don't use
@@ -4315,11 +4318,11 @@ pthread_mutex_unlock(& nodes_visited_lock);
     if(depth>=maxdepth-1){
       bottom=currentSeconds();
       bottom_nodes=*nodes_visited;
-      fprintf(stderr, "Depth %d: second half time %f and nodes %d\n", depth, bottom-mid, bottom_nodes-mid_nodes);
+      //fprintf(stderr, "Depth %d: second half time %f and nodes %d\n", depth, bottom-mid, bottom_nodes-mid_nodes);
       total_nodes_visited+=(*nodes_visited);
-      fprintf(stderr, "Nodes visited here was %d, total was %d\n", *nodes_visited,total_nodes_visited);
+      /*fprintf(stderr, "Nodes visited here was %d, total was %d\n", *nodes_visited,total_nodes_visited);
       fprintf(write_second_time, "%f\n", bottom-mid);
-      fprintf(write_second_count, "%d\n", bottom_nodes-mid_nodes);
+      fprintf(write_second_count, "%d\n", bottom_nodes-mid_nodes);*/
   
     }
 
@@ -4328,9 +4331,9 @@ pthread_mutex_unlock(& nodes_visited_lock);
   move_sp = move_stack;
 
   bottom=currentSeconds();
-  fprintf(stderr, "Total time was was %f\n", bottom-initialize);
-  fprintf(write_count, "%d\n", *nodes_visited);
-  fprintf(write_divergence, "fence %f\n",/*__cilkrts_get_worker_number(),*/ bottom-initialize);
+  /*  fprintf(stderr, "Total time was was %f\n", bottom-initialize);
+      fprintf(write_count, "%d\n", *nodes_visited);*/
+  //  fprintf(write_divergence, "fence %f\n",/*__cilkrts_get_worker_number(),*/ bottom-initialize);
 
 
   return result_move;
@@ -4480,19 +4483,20 @@ sprintf(filename, "%s%sdivergence2.dat", argv[5],argv[6]);
 		    
 		    if (argc>2 && atoi(argv[2])==1 && random_countdown<=0){
 		      move=p_root_time(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count, write_divergence);
+		      //move=p_root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count, write_divergence);
 		      fprintf(write_real,"%d\n", global_depth);
 		      
 		    }
-		    else if (random_countdown<=0){
+		      else if (random_countdown<=0){
 		      //		      move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
 		      move = root_time(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
 		      fprintf(write_real,"%d\n", global_depth);
-		    }
+		      }
 
-		    		    else{
+		    //else{
 		      move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
 
-		      		    }
+		      //   		    }
 
 		    fprintf(stderr,"Did move %d\n", ply);
 		    random_countdown-=1;
