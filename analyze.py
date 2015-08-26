@@ -1,7 +1,16 @@
 #!/usr/bin/python
 import sys
-#latepath="/home/akavka/minimax/"
+"""
+Adam Kavka
+30 April 2015
 
+This file contains many functions for doing analysis of your games.
+It can count time per move, search depth per move, see who won, etc.
+
+"""
+
+
+#This function looks at the input file and says who won the game.
 def getResult(inFile):
     wins =0;
     draws=0;
@@ -18,16 +27,14 @@ def getResult(inFile):
             print("Result win")
 
 
-
+#This function is used in debugging. It looks at the files for two different games and makes sure they are identical.
 def compareGames(inFile1, inFile2):
     in1=open(inFile1, "r")
     in2=open(inFile2,"r")
-    #result=True
+
     lines1=in1.readlines()
     lines2=in2.readlines()
-#    if (len(lines1)!=len(lines2)):
-        
- #       return False
+
     
     #implicit else
     for i in range(len(lines1)):
@@ -38,7 +45,8 @@ def compareGames(inFile1, inFile2):
     return True
 
 
-
+#This function tells you the average time per turn in the input file's game.
+#This takes an input file with a different format than 'analyzeTime'; the files here terminate with a "g" character
 def analyzeOutput(filename):
     inFile=open(filename, "r");
     lines=inFile.readlines();
@@ -46,6 +54,8 @@ def analyzeOutput(filename):
     numTurns=0
     mySum=0
     for line in lines:
+        
+        #Check if this line was the end of the game
         if line[0]==("g"):
             print("Average time from file " + filename + " was "+str(mySum/numTurns) + " for game " + str(gameIndex))
             return mySum
@@ -53,12 +63,14 @@ def analyzeOutput(filename):
             mySum=0
             gameIndex+=1
          
+         #Add this turn to our average
         else:
             mySum+=float(line)
             numTurns+=1
     inFile.close();
 
-
+#This function tells you the average time per turn in the input file's game.
+#This takes an input file with a different format than 'analyzeTime'; every line in the input file here is the timing for a turn
 def analyzeTime(filename):
     inFile=open(filename, "r");
     lines=inFile.readlines();
@@ -71,7 +83,7 @@ def analyzeTime(filename):
     print("Average time from file " + filename + " was "+str(float(mySum)/numTurns) )
     return mySum
 
-
+#This method looks at an output file to count the total number of minimax nodes visited
 def analyzeCount(filename):
     inFile=open(filename, "r");
     lines=inFile.readlines();
@@ -84,30 +96,45 @@ def analyzeCount(filename):
     print("Average time from file " + filename + " was "+str(float(mySum)/numTurns) )
     return mySum
 
+
+#This method tells you what fraction of the time cores are being used.
+# For example if a search lasts 6 seconds, and one core is actually doing work for 3 seconds,
+# and another core is actully doing work for 1 second,
+# This will print a utilization of '3'
 def analyzeDivergence(filename, numCoresString):
     numCores=float(numCoresString)
     inFile=open(filename, "r");
     lines=inFile.readlines();
  #   sums=[]
  
+ #This keeps track of how much work we did each turn
     partialUsefulSum=0
+    
+    #This is the total work we did across all turns
     usefulSum=0
+    
+    #This is the total time of the game
     totalSum=0
+    
     for line in lines:
         words=line.split()
+        
+    #start a new turn, print results of previous turn    
         if words[0]=="fence":
             utilization=partialUsefulSum/(numCores*float(words[1]))
-    #        utilization=sum(sums)/(4*float(words[1]))
+   
             print("Utilization was " + str(utilization))
             totalSum+=numCores*float(words[1])
             partialUsefulSum=0
-   #         sums=[0,0,0,0]
+            
+            #add to the tally for this turn
         else:
-  #          sums[int(words[0])]+=float(words[1])
             partialUsefulSum+=float(words[1])
             usefulSum+=float(words[1])
     print("Total utilization was " + str(usefulSum/totalSum))
 
+
+#This method reades an input file to get the the average depth of search.
 def analyzeDepth(filename, side):
     inFile=open(filename, "r");
     lines=inFile.readlines();
@@ -124,7 +151,16 @@ def analyzeDepth(filename, side):
 
 
 def main():
+    
+    #These arguments get us to our path on latedays, the cluster we ran this on
     latepath=sys.argv[4]+sys.argv[5]
+    
+    analyzeDepth(latepath+"depth_white.dat", "W")
+    analyzeDepth(latepath+"depth_black.dat", "B")    
+    getResult(latepath+"out2.txt")
+
+#everything below here is old analysis. I left it in incase you wat to uncomment something useful
+############################################################################
     """
     print("Comparing "+sys.argv[1]+ " and " + sys.argv[2] + ":\n")
     print(str(compareGames(sys.argv[1], sys.argv[2])))
@@ -145,10 +181,7 @@ def main():
     secondCount1=analyzeCount(latepath+"count_second1.dat")
     secondCount2=analyzeCount(latepath+"count_second2.dat")
     """
-    analyzeDepth(latepath+"depth_white.dat", "W")
-    analyzeDepth(latepath+"depth_black.dat", "B")    
-    getResult(latepath+"out2.txt")
-
+    
 #    analyzeDivergence(latepath+"divergence2.dat", sys.argv[3])
     """
     print("Overall speedup was " + str(totalTime1/totalTime2))
