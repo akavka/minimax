@@ -8,10 +8,26 @@ This project is chess with AI that can search a minimax tree in parallel. It con
 List of files that I edited:
 
 Makefile - I changed this to compile with Cilk.
+
 analyze.py - This contains many functions for reading output files to see the average depth of search, how much we lost to non-maximum utilization of the cores, average search time, etc.
 
+bulkScript.sh - submits a series of jobs to the latedays cluster
+
+latedays.qsub -  this submits a single mainScript.sh job to the latedays cluster
+
+mainScript.sh - this sets the environment variables, builds our chess program, runs it, and runs the analysis script.
+
+cycleTimer.h - This is an accurate C timer using the processors clock cycles. It works well when doing parallelism in the Cilk library. It is adapted from Kayvon's C++ cycle timer.
+
+hscp.c - this is the program that lets people play chess. It also contains all of the AI.
+
+inputBoth.txt - This is the input for hscp.txt when it runs; it's only two lines.
+
+takeAver
 
 
+book.txt - this is the book of opening chess patterns; it is unused here
 
+cscp.c - this is unused; it is a version of the program where both sides are serial AI
 
-List of files unchanged from Marcel's Simple Chess Program:
+mscp.c - this is an older version of hscp.c
