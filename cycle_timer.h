@@ -22,6 +22,7 @@
 #  include <sys/time.h>
 #endif
 
+//This was a C++ cycle timer for parallel programs provided by Dr. Kayvon. I have adapted it for C.
 
   // This uses the cycle counter of the processor.  Different
   // processors in the system will have different values for this.  If
