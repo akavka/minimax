@@ -160,7 +160,7 @@ def main():
     getResult(latepath+"out2.txt")
 
 #everything below here is old analysis. I left it in incase you wat to uncomment something useful
-############################################################################
+#############################################################################
     """
     print("Comparing "+sys.argv[1]+ " and " + sys.argv[2] + ":\n")
     print(str(compareGames(sys.argv[1], sys.argv[2])))
