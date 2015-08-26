@@ -1,4 +1,11 @@
 #!/bin/bash
+
+#This script submits a bunch of jobs to the latedays queue.
+# The number of cores is varied approximately logarithmically from 1 to 24
+# Ten different random seeds are used for each number of cores
+# 13 turns are searched to depth 6 in each game
+#If I could do this script again I would use iteration in stead of repeating the same command 70 times.
+
 depth=6
 numTurns=13
 
