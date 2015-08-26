@@ -1,30 +1,32 @@
- 
+
 
 /*----------------------------------------------------------------------+
 Adam's Parallel chess program.
 Created 1 April 2015
 Updated: May 2015
 This code takes Marcel's Simple Chess Program and improves it by adding
-Cilk.
+Cilk so that it can search the minimax tree in parallel.
+
+Most of the code here is unchanged from Marcel's Simple Chess Program. I have NOT commented the code that I didn’t change.
+
+There are a few big changes:
+
+The original code had too many global variables that interfered with the parallelism. To address this, I added a copy of many functions called "p_original_function_name." These functions are like the original functions, but they pass local variables in as arguments instead of using global variables.
+
+There is a structure added called ball. This structure holds all of the variables that were formerly global variables so they can be passed to the functions as one bundle. The structure is supported with new functions called setup(), restore_global_variables(), and ruin_global_variables().
+
+I have substantially changed the logic of p_root_search, p_vsearch, and main() to support parallelism. I have thoroughly commented these functions.
 +----------------------------------------------------------------------*/
+/*
+Command line arguments
+argv[1] is the random seed
+argv[2] is ‘1’ if we want parallel code 	
+argv[3] is the max search depth
+argv[4] is the max number of moves we search before assuming the game is a draw (we don’t directly check for draws via repeated boardstates)
+argv[5] is the path to our directory
+argv[6] is the directory of the logs
+*/
 
-
-/*----------------------------------------------------------------------+
- |                                                                      |
- |              mscp.c - Marcel's Simple Chess Program                  |
- |                                                                      |
- +----------------------------------------------------------------------+
- |
- | Author:      Marcel van Kervinck <marcelk@bitpit.net>
- | Creation:    11-Jun-1998
- | Last update: 14-Dec-2003
- | Description: Simple chess playing program
- |
- +----------------------------------------------------------------------+
- |    Copyright (C)1998-2003 Marcel van Kervinck                        |
- |    This program is distributed under the GNU General Public License. |
- |    See file COPYING or http://bitpit.net/mscp/ for details.          |
- +----------------------------------------------------------------------*/
 
 char mscp_c_rcsid[] = "@(#)$Id: mscp.c,v 1.18 2003/12/14 15:12:12 marcelk Exp $";
 
@@ -140,6 +142,7 @@ static unsigned long zobrist[12][64];   /* Hash-key construction */
 #define CORE (2048)
 static long booksize;                   /* Number of opening book entries */
 
+//I added this so we can pass local copies of all of the variables that used to be global into functions easily
 typedef struct ball {
   struct side white;
   struct side black;
@@ -2881,27 +2884,23 @@ static int p_evaluate(byte* p_board, ball*arg_ball)
         return PWTM(arg_ball->ply) ? score : -score;
 }
 
+//This function makes a local copy of a bunch of variables that used to be global. 
 static ball* setup(struct side * arg_white, struct side* arg_black, struct side* arg_friend, struct side* arg_enemy, int arg_ply, unsigned short arg_caps, struct move* copy_move_stack, int offset){
   ball*result=(ball*)malloc(sizeof(ball));
   result->white=(*arg_white);
   result->black=(*arg_black);
   result->ply=arg_ply;
   result->caps=arg_caps;
-  //result->ply=ply;
+
+//Make sure we copy the whole stack
   memcpy(copy_move_stack, move_stack, 1024*sizeof(struct move));
   result->move_sp=copy_move_stack+offset;
   result->undo_sp=(signed char*) malloc(6*1024*sizeof(signed char));
   result->nodes_visited=0;
   result->copy_move_stack=copy_move_stack;
-  /*  if ((*((int*)(result->move_sp)))!=(*((int*)(move_sp)))){
-    fprintf(stderr,"move_sp wasn't copied correctly\n");
-  }
-  else{
-    fprintf(stderr,"YES, move_sp was copied correctly\n");
-    }*/
 
-  /*result->friend=arg_friend;
-    result->enemy=arg_enemy;*/
+
+//make sure the black and white pointers match their respective friend and enemy pointers.
     if(arg_black==arg_friend &&arg_white==arg_enemy){
     
     result->enemy=&(result->white);
@@ -2919,7 +2918,7 @@ static ball* setup(struct side * arg_white, struct side* arg_black, struct side*
   return result;
 }
 
-
+//This was for debugging. If we ruin the global variables and get the result, we know we were always using local copies of these variables.
 static void ruin_global_variables(){
   move_sp+=999;
   friend+=999;
@@ -2929,6 +2928,7 @@ static void ruin_global_variables(){
   caps+=999;
 }
 
+//Restore the global variables we ruined in the last section.
 static void restore_global_variables(){
   move_sp-=999;
     friend-=999;
@@ -3364,6 +3364,7 @@ static int cilk_child_search(int depth, int alpha, int beta, byte* p_board, ball
 
 static int p_vsearch(int depth, int alpha, int beta, int* nodes_visited, FILE*write_divergence)
 {
+//initialize variables
         int                             best_score = -INF;
         int                             best_move = 0;
         int                             score;
@@ -3390,13 +3391,6 @@ static int p_vsearch(int depth, int alpha, int beta, int* nodes_visited, FILE*wr
 
 
 
-	/*SIMPLE no hash stack
-	  test for draw by repetition*/ 
-        /*hash_stack[ply] = compute_hash();
-        for (i=ply-4; i>=board[LAST]; i-=2) {
-                if (hash_stack[i] == hash_stack[ply]) count++;
-                if (count>=2) return 0;
-		}*/
 
         
 	/*  check transposition table*/
@@ -3414,13 +3408,14 @@ static int p_vsearch(int depth, int alpha, int beta, int* nodes_visited, FILE*wr
         history[best_move] |= PRESCORE_HASHMOVE;*/
 
 
-	pthread_mutex_init(&main_lock, NULL);
+//initialize pthread
+pthread_mutex_init(&main_lock, NULL);
 	
 pthread_mutex_init(&nodes_visited_lock, NULL);
         incheck = enemy->attack[friend->king];
 
         /*
-         *  generate moves
+         *  generate possible moves
          */
         moves = move_sp;
         generate_moves(0);
@@ -3428,15 +3423,16 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
         history[best_move] &= 0x3fff;
         best_move = 0;
 
+//sort our moves
         qsort(moves, move_sp - moves, sizeof(*moves), cmp_move);
 
 
-	/*recursively call this function*/
-        while (proceed && (move_sp > moves)) {
+	/*loop while we still have moves left on our stack and haven’t found a checkmate yet*/
+while (proceed && (move_sp > moves)) {
 		
                 int newdepth;
                 int move;
-			(*nodes_visited)++;		
+(*nodes_visited)++;		
 	
                 move_sp--;
                 move = move_sp->move;
@@ -3447,38 +3443,45 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
                         continue;
                 }
 
+	/*This is the principle variation minimax algorithm throughout here*/
                 newdepth = incheck ? depth : depth-1;
                 if (newdepth <= 0) {
 		  score = -qsearch(-beta, -alpha);
                 } else {
+		/*recursively call this function*/
 		  score = -p_vsearch(newdepth, -beta, -alpha, nodes_visited, write_divergence);
                 }
                 if (score < -29000) score++;    /* adjust for mate-in-n */
 		proceed=0;
                 unmake_move();
 
+/*go to the next move if we haven’t found a new maximum;*/
                 if (score <= best_score) continue;
+
+/*We found a new maximum*/
                 best_score = score;
                 best_move = move;
 
+/*We can give up on this move if our score is less than alpha*/
                 if (score <= alpha) continue;
+
+/*adjust alpha value*/
                 alpha = score;
-
+	
                 if (score < beta) continue;
-
+/*If we find a move better than beta, we should give up; our opponent will never allow us to get this far.
 		move_sp = moves; /* fail high: skip remaining moves */
 	}
 
 
 
         /*
-         *  loop over all moves
+         * Once we’ve done a single move in serial, we can do the rest in parallel; that’s how Principal Variation Search works
          */
+/*marks when we’re in parallel code; used for debugging to make sure we don’t call serial functions in parallel code*/
 	parallel_code=1;
 	       
-	//	for(k=move_sp; k>moves; k--){
 	cilk_for(k=moves+1; k<=move_sp; k++){
-	  //	while (move_sp > moves) {
 	  
 	  int print_results=1;
 	  double begin=currentSeconds();
@@ -3495,18 +3498,18 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 	  ball*arg_ball;
 	  
 	  
-	  //	(*nodes_visited)++;		
+/*Initialize locks*/
 	  pthread_mutex_lock(&main_lock);
 	  local_alpha=alpha;
 	  local_beta=beta;
 	  pthread_mutex_unlock(&main_lock);		  
 
-		  //	pthread_mutex_lock(&main_lock);
+//use ‘go_on’ to skip over steps we don’t need to do
 		if(fail){
 
 		  go_on=0;
 		}
-		//  pthread_mutex_unlock(&main_lock);		  
+
 		  if(go_on){
 		move_stack_copy=(struct move*) malloc(1024*sizeof(struct move));
 		arg_ball=setup(&white, &black, friend, enemy, ply, caps, move_stack_copy, k-move_stack);
@@ -3514,37 +3517,23 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		  p_board[j]=board[j];
 		}
 
-		/*TEMP used to prove that global variable isn't being touched.*/
-		//		ruin_global_variables();
-		
-
-		
-
-		
-		//		move_sp--;
                 (arg_ball->move_sp)--;
                 move = arg_ball->move_sp->move;
 
-		/*TEMP this should be deep copy of board*/
 
                 p_make_move(move, p_board, arg_ball);
 
-		/*TEMP this needs to be a deep copy of board*/
                 p_compute_attacks(p_board, arg_ball);
                 if (arg_ball->friend->attack[arg_ball->enemy->king]) {
 
 
-		  /*TEMP this should be a deep copy of board*/
                         p_unmake_move(p_board, arg_ball);
 			
-			/*TEMP eliminating frees*/
 			free(move_stack_copy);
 			free(arg_ball->undo_sp);
 			free(arg_ball);
 			free(p_board );
 
-		/*TEMP used to prove that global variable isn't being touched.*/
-			//restore_global_variables();
 			
 			go_on=0;
                 }
@@ -3554,59 +3543,58 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		  newdepth = incheck ? depth : depth-1;
 		  if (newdepth <= 0) {
 		    
-		    /*TEMP this should be a deep copy of board*/
-		    
+		//run qsearch if we’re at the end of our search		    
 		    local_score = -p_qsearch(-local_beta, -local_alpha, p_board, arg_ball);
 		  } 
 		  
+		// Recursively search branches of tree
 		  else if ((newdepth>=CILK_THRESHOLD)&&WORK_STEAL_A){
 		    local_score=-cilk_child_search(newdepth, -local_beta, -local_alpha, p_board, arg_ball, write_divergence);
 		    print_results=0;
 		    }
 		  else{
-		    /*TEMP this should be deep copy of p_board*/
 		    local_score = -p_child_search(newdepth, -local_beta, -local_alpha, p_board, arg_ball);
 		  }
 		  if (local_score < -29000) local_score++;    /* adjust for mate-in-n */
 
 
+//we need to update nodes_visited in a threadsafe manner
 		  pthread_mutex_lock(&nodes_visited_lock);
 		  (*nodes_visited)+=arg_ball->nodes_visited;
 		  
 		  pthread_mutex_unlock(&nodes_visited_lock);
 		  
 		  
-		  /*TEMP this should be a deep copy of board*/
 		  p_unmake_move(p_board, arg_ball);
 		  
 
-		  /*TEMP eliminating frees*/
 		  free(move_stack_copy);
 		  free(arg_ball->undo_sp);
 		  free(arg_ball);
 		  free(p_board);
-		  /*}
-		
-		    if(go_on){*/
 
 		  
 		  if ((local_score>alpha) || (local_score>best_score)){
+
+//need to update best_score in threadSafe manner
 		    pthread_mutex_lock(&main_lock);
 		    if (local_score>alpha){
-		      usleep(1);
+		      //usleep(1); used for debugging
 		      best_score = local_score;
 		      best_move = move;
 		      alpha = local_score;
 		    }
 		    
+
 		    else if (local_score>best_score){
-		      usleep(1);
+		      //usleep(1); used for debugging
 		      best_score = local_score;
 		      best_move = move;   
 		    }
 		    	pthread_mutex_unlock(&main_lock);
 		  }
 
+//set a flag to give up if we’re more than beta.
 		  if (local_score>beta){
 		      fail=1;
 		    
@@ -3614,7 +3602,7 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 
 		}//end go_on
 	
-
+//keep track of the total time of our search
 		end=currentSeconds();
 
 		if(print_results)
@@ -3626,11 +3614,6 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 		}//end go_on
 		
 		if (go_on){*/
-		  //TEMP: we're eliminating this optimization to be more cilk compliant
-		  //		  k=move_sp+1;
-		  //	k=moves;
-		  //move_sp = moves; /* fail high: skip remaining moves */
-		//end go_on
 
 
         }
@@ -3650,7 +3633,7 @@ pthread_mutex_init(&nodes_visited_lock, NULL);
 
 
 
-	/*	SIMPLE getting rid of hash table
+	/*	This is in case we introduce hash table later. 
        history[best_move & 07777] += depth*depth;
         if (history[best_move & 07777] > 511) {
                 int m;
@@ -4359,6 +4342,15 @@ static char startup_message[] =
         "\n"
         "Type 'help' for a list of commands\n";
 
+/*
+Command line arguments
+argv[1] is the random seed
+argv[2] is ‘1’ if we want parallel code 	
+argv[3] is the max search depth
+argv[4] is the max number of moves we search before assuming the game is a draw (we don’t directly check for draws via repeated boardstates)
+argv[5] is the path to our directory
+argv[6] is the directory of the logs
+*/
 int main(int argc, char *argv[])
 {
         int i;
@@ -4369,6 +4361,8 @@ int main(int argc, char *argv[])
         int move;
 	clock_t start, end;
 	double start_c, end_c;
+
+//initialize some files we’ll write to
 	FILE*write_time, *write_first_time, *write_second_time, *write_first_count, *write_second_count, *write_count, *write_divergence, *write_real_white, *write_real_black;
 
 
@@ -4451,7 +4445,7 @@ int main(int argc, char *argv[])
 	/*SIMPLE I added this so we can input the random seed.*/
 	if(argc>1){
 	rnd_seed=atol(argv[1]);
-	fprintf(stderr, "Got randome seed, it was %d\n", rnd_seed);
+	fprintf(stderr, "Got random seed, it was %d\n", rnd_seed);
 	}
 	else{
 	  rnd_seed=time(NULL);
@@ -4485,19 +4479,23 @@ int main(int argc, char *argv[])
 		    memset(&core, 0, sizeof(core));
 		    memset(history, 0, sizeof(history));
 		    
+/*black is the parallel color. We only do parallel code after the first few moves; the first few moves are random*/
 		    if (ply%2==0 && random_countdown<=0){
 		      move=p_root_time(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count, write_divergence);
 		      //move=p_root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count, write_divergence);
 		      fprintf(write_real_black,"%d\n", global_depth);
 		      
 		    }
+//We are white; call serial code
 		      else if (random_countdown<=0){
 		      //		      move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
 		      move = root_time(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
 		      fprintf(write_real_white,"%d\n", global_depth);
 		      }
 
+
 		    else{
+//we’re still on random moves
 		    		      move = root_search(maxdepth, write_time, write_first_time, write_second_time, write_count, write_first_count, write_second_count);
 
 		         		    }
@@ -4509,12 +4507,13 @@ int main(int argc, char *argv[])
 		    }//if
 		    
 		  }
-		  
+//keep track of length of game		  
 		  end=clock();
 			end_c=currentSeconds();
 			//	fprintf(write_time, "%f\n", ((double)end-start)/CLOCKS_PER_SEC);
 			fprintf(write_time, "%f\n", end_c-start_c);
 			
+//print result
                         if (!move || ply >= atoi(argv[4])) {
 			  printf("game over: ");
 			  fprintf(write_time, "game over: ");
@@ -4540,6 +4539,8 @@ int main(int argc, char *argv[])
                         print_board();
                 }
         }
+
+//close files.
 	fclose(write_time);
 fclose(write_first_time);
 fclose(write_second_time);
