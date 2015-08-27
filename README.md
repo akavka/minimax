@@ -1,6 +1,8 @@
 # minimax
 This is Adam's project for Parallel Computing 15-418 with Dr. Kayvon.
 
+Detailed analysis for the project is here: https://onedrive.live.com/view.aspx?resid=32E6A245B0AB92ED!5392&ithint=file%2cpdf&app=WordPdf&authkey=!APosAtniXrQRu9M
+
 You're free to read it and use any snippets you would like, please just don't use it for academic misconduct.
 
 This project is chess with AI that can search a minimax tree in parallel. It contains code for playing a serial and a parallel  AI against each other with fixed time per turn and recording the winner. The code was adapted from Marcel's Simple Chess Program (that program was originally serial). Most of the chess code is in C and the test harness is in python. The parallelization is all done with Cilk.
