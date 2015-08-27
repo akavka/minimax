@@ -23,7 +23,7 @@ hscp.c - this is the program that lets people play chess. It also contains all o
 
 inputBoth.txt - This is the input for hscp.txt when it runs; it's only two lines.
 
-takeAver
+takeAverages.py - This is unused but it is similar to analyze.py
 
 
 book.txt - this is the book of opening chess patterns; it is unused here
